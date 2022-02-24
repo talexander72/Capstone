@@ -1,7 +1,12 @@
+
+#from pyACA import computeFeature
 import PySimpleGUI as sg
 from scipy.io.wavfile import read
 import os
-#import pyACA
+#import librosa
+#import sklearn
+
+
 
 
 #def features(feature, files):
@@ -9,28 +14,29 @@ import os
 #    for i in files:
 #        fs = i[0]
 #        x = i[1]
-#        [vsf, t] = pyACA.computeFeature(feature, x, fs)
+#        [vsf, t] = computeFeature(feature, x, fs)
 #        specList.append([vsf, t])
 #    return specList
 
 
-#fList = ['SpectralCentroid', 'SpectralCrestFactor', 'SpectralDecrease', 'SpectralFlatness', 'SpectralFlux',
-#         'SpectralKurtosis', 'SpectralMfccs', 'SpectralPitchChroma', 'SpectralRolloff', 'SpectralSkewness',
-#         'SpectralSlope', 'SpectralSpread', 'SpectralTonalPowerRatio', 'TimeAcfCoeff', 'TimeMaxAcf',
-#         'TimePeakEnvelope', 'TimePredictivityRatio', 'TimeRms', 'TimeStd', 'TimeZeroCrossingRate']
+fList = ['SpectralCentroid', 'SpectralCrestFactor', 'SpectralDecrease', 'SpectralFlatness', 'SpectralFlux',
+         'SpectralKurtosis', 'SpectralMfccs', 'SpectralPitchChroma', 'SpectralRolloff', 'SpectralSkewness',
+         'SpectralSlope', 'SpectralSpread', 'SpectralTonalPowerRatio', 'TimeAcfCoeff', 'TimeMaxAcf',
+         'TimePeakEnvelope', 'TimePredictivityRatio', 'TimeRms', 'TimeStd', 'TimeZeroCrossingRate']
 BAR_MAX = 1000
 sg.theme('Black')
 layout = \
     [[sg.Text("Path to Folder:"), sg.Input(key="-IN-", change_submits=True), sg.FolderBrowse(key="-IN-")],
     [sg.Text('Preprocessing: before feature extraction, audio must be "chunked" into equal size segments')],
     [sg.Text('Enter a Chunk Size (samples)'), sg.Slider(range=(100, 500), default_value=222, size=(40, 20), orientation='horizontal')],
-    [sg.Text('Enter a Hop Size (samples)'), sg.Slider(range=(100, 500), default_value=500, size=(40, 20), orientation='horizontal')],
-    [sg.Text('Preprocessing: Would You Like to Cross Validate?)'), sg.Radio('Yes', "RADIO1"), sg.Radio('No', "RADIO1", default=True)],
+    [sg.Text('Enter an Overlap Ratio (percent)'), sg.Slider(range=(0, 99), default_value=0, size=(40, 20), orientation='horizontal')],
+    [sg.Text('Smaller datasets may benefit from cross validation. Implement K-Fold Cross Validation?)'), sg.Radio('Yes', "RADIO1"), sg.Radio('No', "RADIO1", default=True)],
     [sg.Button('Ok'), sg.Button('Cancel')],
-    [[sg.Text('file read progress:')],
-    [sg.ProgressBar(BAR_MAX, orientation='h', size=(20, 20), key='-PROG-')]]]
+    [sg.Text('file read progress:'), sg.ProgressBar(BAR_MAX, orientation='h', size=(20, 20), key='-PROG-')],
+    [sg.Text('feature extraction progress:'), sg.ProgressBar(BAR_MAX, orientation='h', size=(20, 20), key='-PROG2-')],
+    [sg.Text('model training progress:'), sg.ProgressBar(BAR_MAX, orientation='h', size=(20, 20), key='-PROG3-')]]
 
-window = sg.Window('Enhanced Feature Selection', layout)
+window = sg.Window('Enhanced Feature Selection', layout, element_justification='c')
 
 while True:
     event, values = window.read()
