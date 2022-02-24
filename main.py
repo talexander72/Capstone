@@ -11,7 +11,7 @@ layout = \
     [sg.Button('Ok'), sg.Button('Cancel')]]
 
 window = sg.Window('Enhanced Feature Selection', layout)
-#test comment branch
+#test comment
 while True:
     event, values = window.read()
     print(values["-IN-"])
