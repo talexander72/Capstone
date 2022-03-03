@@ -36,20 +36,10 @@ count=0
 print(len(entries1)+len(entries2))
 window2 = sg.Window('progress', layoutB)
 
-for k in range(len(entries1)+len(entries2)):
-    event, values = window2.read(timeout=10)
-    if event == 'Cancel' or event == sg.WIN_CLOSED:
-        break
-    [fs, x] = read("/Users/tuckeralexander/Desktop/Classes/Capstone/data/MIMII/fan/id_00/normal/" + entries1[k])
-    classA.append([fs, x[:, 2]])
-    count = count+1
-    window2['-PROG-'].update(k + 1)
 
-    while k >= len(entries1):
-        [fs, x2] = read("/Users/tuckeralexander/Desktop/Classes/Capstone/data/MIMII/fan/id_00/abnormal/" + entries2[k-len(entries1)])
-        classB.append([fs, x[:, 2]])
-        count = count+1
-        window2['-PROG-'].update(k + 1)
-    #if divmod(count,2) == 0:
-        #window2['-PROG-'].update(k + 1)
-window2.close()
+for i in range(1,10000):
+    sg.one_line_progress_meter('My Meter', i+1, 10000, 'key','Optional message',RETURN)
+    i = i+1
+    if i > 500:
+        break
+
