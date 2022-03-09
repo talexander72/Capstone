@@ -5,7 +5,7 @@ import os
 import pandas as pd
 import numpy as np
 import math
-
+import pyAudioAnalysis
 
 def chunk_fit(in1, chunksize, hopsize):      # in1 is list of each audio file
     fit = ((len(in1)-(chunksize + 1))/hopsize) + 1             # fit determines if chunk size divides evenly into the audio sample length
@@ -50,7 +50,6 @@ window = sg.Window('Enhanced Feature Selection', layout, element_justification='
 while True:
     event, values = window.read()
     if event == "Ok":
-        print("You chose a chunk size of %s samples, with cross validation = %s" % (values[0], values[2]))
         classes = os.listdir(values["-IN-"])
         entries1 = os.listdir(values["-IN-"] + '/' + classes[1])
         entries2 = os.listdir(values["-IN-"] + '/' + classes[2])
@@ -61,7 +60,7 @@ while True:
         chunksA = []
         chunksB = []
         for i in range(total):
-            if not sg.one_line_progress_meter('File Read Progress', i+1, total, 'File Read Progress'):
+            if not sg.one_line_progress_meter('File Read Progress', i+1, total, 'step 1 of 3: parsing data'):
                 break
             if i >= len(entries1):
                 [fs, x2] = read(values["-IN-"] + '/' + classes[2] + '/' + entries2[i-len(entries1)])
