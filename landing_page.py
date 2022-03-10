@@ -8,6 +8,7 @@ import math
 import pyAudioAnalysis
 #from sklearn.model_selection import StratifiedKFold, KFold
 
+
 def chunk_fit(in1, chunksize, hopsize):     # in1 is current audio file
     # adds zero padding if necessary to current audio file
     fit = ((len(in1)-(chunksize + 1))/hopsize) + 1
@@ -60,6 +61,8 @@ while True:
     event, values = window.read()
     if event == "-READ-":   # upon hitting step 1 'OK' button
         featuresbool = True     # activates step 2 'OK' button
+        chunksize = values["-CHUNK-"]
+        hopsize = (1 - values["-HOP-"]) * chunksize
         classes = os.listdir(values["-IN-"])
         entries1 = os.listdir(values["-IN-"] + '/' + classes[1])
         entries2 = os.listdir(values["-IN-"] + '/' + classes[2])    #
@@ -73,13 +76,13 @@ while True:
                 break
             if i >= len(entries1):  # processing class B
                 [fs, x2] = read(values["-IN-"] + '/' + classes[2] + '/' + entries2[i-len(entries1)])
-                framesB = chunker(x2[:, 2], values["-CHUNK-"], values["-HOP-"])
+                framesB = chunker(x2[:, 2], chunksize, hopsize)
                 classB.append([fs, x2[:, 2]])
                 chunksB.append(framesB)
                 i = i + 1
             else:   # processing class A
                 [fs, x] = read(values["-IN-"] + '/' + classes[1] + '/' + entries1[i])
-                framesA = chunker(x[:, 2], values["-CHUNK-"], values["-HOP-"])
+                framesA = chunker(x[:, 2], chunksize, hopsize)
                 classA.append([fs, x[:, 2]])
                 chunksA.append(framesA)
                 i = i + 1
