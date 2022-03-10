@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import math
 import pyAudioAnalysis
+#from sklearn.model_selection import StratifiedKFold, KFold
 
 def chunk_fit(in1, chunksize, hopsize):      # in1 is list of each audio file
     fit = ((len(in1)-(chunksize + 1))/hopsize) + 1             # fit determines if chunk size divides evenly into the audio sample length
@@ -34,15 +35,19 @@ def chunker(fitted, chunksize, hopsize):
     return frames
 
 
-BAR_MAX = 500
 sg.theme('Black')
 layout = \
     [[sg.Text("Path to Folder:"), sg.Input(key="-IN-", change_submits=True), sg.FolderBrowse(key="-IN-")],
-    [sg.Text('Preprocessing: before feature extraction, audio must be "chunked" into equal size segments')],
-    [sg.Text('Enter a Chunk Size (samples)'), sg.Slider(range=(100, 500), default_value=222, size=(40, 20), orientation='horizontal')],
+    [sg.Text('__'*30)],
+    [sg.Text('Preprocessing Pipeline: before feature extraction, audio must be "chunked" into equal size segments')],
+    [sg.Text('Enter a Chunk Size (samples)'), sg.Slider(range=(256, 8192), default_value=2048, size=(40, 20), orientation='horizontal')],
     [sg.Text('Enter an Overlap Ratio (percent)'), sg.Slider(range=(0, 99), default_value=0, size=(40, 20), orientation='horizontal')],
     [sg.Text('Smaller datasets may benefit from cross validation. Implement K-Fold Cross Validation?)'), sg.Radio('Yes', "RADIO1"), sg.Radio('No', "RADIO1", default=True)],
-    [sg.Button('Ok')], [sg.Button('Cancel')]]
+    [sg.Text('(Step 1 of 3) Launch Preprocessing Pipeline:'), sg.Button('Ok'), sg.Button('Cancel')],
+    [sg.Text('__'*30)],
+    [sg.Text('Feature Extraction: Audio features are computed and averaged across chunks')],
+    [sg.Text('How many features would you like to test?'), sg.Slider(range=(1,10), default_value=10, size=(40,28), orientation='horizontal')],
+    [sg.Text('(Step 2 of 3) Launch Feature Extraction:'), sg.Button('Ok', key="-FEAT-"), sg.Button('Cancel')]]
 
 window = sg.Window('Enhanced Feature Selection', layout, element_justification='c')
 
@@ -76,5 +81,15 @@ while True:
                 i = i + 1
     elif event == sg.WIN_CLOSED or event == "Exit" or event == 'Cancel':
         break
-
 window.close()
+
+layout2 = \
+    [[sg.Text("Feature Selection:"), sg.Input(key="-IN-", change_submits=True), sg.FolderBrowse(key="-IN-")],
+    [sg.Text('__'*30)],
+    [sg.Text('Preprocessing: before feature extraction, audio must be "chunked" into equal size segments')],
+    [sg.Text('Enter a Chunk Size (samples)'), sg.Slider(range=(100, 500), default_value=222, size=(40, 20), orientation='horizontal')],
+    [sg.Text('Enter an Overlap Ratio (percent)'), sg.Slider(range=(1, 99), default_value=99, size=(40, 20), orientation='horizontal')],
+    [sg.Text('Smaller datasets may benefit from cross validation. Implement K-Fold Cross Validation?)'), sg.Radio('Yes', "RADIO1"), sg.Radio('No', "RADIO1", default=True)],
+    [sg.Button('Ok'), sg.Button('Cancel')]]
+
+window2 = sg.Window('Enhanced Feature Selection', layout2, element_justification='c')
