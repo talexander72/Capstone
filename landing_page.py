@@ -8,24 +8,25 @@ import math
 import pyAudioAnalysis
 #from sklearn.model_selection import StratifiedKFold, KFold
 
-def chunk_fit(in1, chunksize, hopsize):      # in1 is list of each audio file
-    fit = ((len(in1)-(chunksize + 1))/hopsize) + 1             # fit determines if chunk size divides evenly into the audio sample length
-    if fit - math.floor(fit) != 0:    # if fit value isn't zero, zeros need to be added to the audio so all chunks are same size
+def chunk_fit(in1, chunksize, hopsize):     # in1 is current audio file
+    # adds zero padding if necessary to current audio file
+    fit = ((len(in1)-(chunksize + 1))/hopsize) + 1
+    if fit - math.floor(fit) != 0:
         add = ((math.ceil(fit)-1)*hopsize + chunksize + 1) - len(in1)
-        add1 = add//2         # chunk size-fit equates number of zeros that need to be added
-        add2 = add-add1       # add1 value is number of zeros before audio samples, add2 value is after
+        add1 = add//2
+        add2 = add-add1     # add1 = number of zeros before audio, add2 = number of zeros after audio
         add1 = int(add1)
         add2 = int(add2)
-        add1 = np.zeros(add1)  # add1 and add2 values will either be equal or differ by one
+        add1 = np.zeros(add1)
         add2 = np.zeros(add2)
-        fitted = [*add1, *in1, *add2]     # compiles and returns the fitted samples
+        fitted = [*add1, *in1, *add2]
     else:
         fitted = [*in1]
     return fitted
 
 
 def chunker(fitted, chunksize, hopsize):
-    # frames = pd.DataFrame()
+    # divides current audio file into equal sized segments
     frames = []
     fitted = chunk_fit(fitted, chunksize, hopsize)
     numchunks = ((len(fitted)-(chunksize + 1))/hopsize) + 1
@@ -34,7 +35,7 @@ def chunker(fitted, chunksize, hopsize):
         frames.append(chunk)
     return frames
 
-
+# main landing page layout
 sg.theme('Black')
 layout = \
     [[sg.Text("Path to Folder:"), sg.Input(key="-IN-", change_submits=True), sg.FolderBrowse(key="-IN-")],
@@ -52,38 +53,41 @@ layout = \
 
 window = sg.Window('Enhanced Feature Selection', layout, element_justification='c')
 featuresbool = False
+modelbool = False   # deactivating buttons that aren't supposed to be used yet
+
+# launching landing page
 while True:
     event, values = window.read()
-    if event == "-READ-":
-        featuresbool = True
+    if event == "-READ-":   # upon hitting step 1 'OK' button
+        featuresbool = True     # activates step 2 'OK' button
         classes = os.listdir(values["-IN-"])
         entries1 = os.listdir(values["-IN-"] + '/' + classes[1])
-        entries2 = os.listdir(values["-IN-"] + '/' + classes[2])
+        entries2 = os.listdir(values["-IN-"] + '/' + classes[2])    #
         total = len(entries1) + len(entries2)
-        BAR_MAX = total
         classA = []
         classB = []
         chunksA = []
         chunksB = []
-        for i in range(total):
+        for i in range(total):  # step 1 progress bar
             if not sg.one_line_progress_meter('File Read Progress', i+1, total, 'step 1 of 3: parsing data'):
                 break
-            if i >= len(entries1):
+            if i >= len(entries1):  # processing class B
                 [fs, x2] = read(values["-IN-"] + '/' + classes[2] + '/' + entries2[i-len(entries1)])
                 framesB = chunker(x2[:, 2], values["-CHUNK-"], values["-HOP-"])
                 classB.append([fs, x2[:, 2]])
                 chunksB.append(framesB)
                 i = i + 1
-            else:
+            else:   # processing class A
                 [fs, x] = read(values["-IN-"] + '/' + classes[1] + '/' + entries1[i])
                 framesA = chunker(x[:, 2], values["-CHUNK-"], values["-HOP-"])
                 classA.append([fs, x[:, 2]])
                 chunksA.append(framesA)
                 i = i + 1
-    elif event == "-FEAT-" and featuresbool:
+    elif event == "-FEAT-" and featuresbool:    # upon hitting step 2 'OK' button
         for i in range(total):
             if not sg.one_line_progress_meter('File Read Progress', i+1, total, 'step 2 of 3: extracting features'):
                 break
+            #for f in range(10):
     elif event == sg.WIN_CLOSED or event == "Exit" or event == '-READX-' or event == '-FEATX-':
         break
 
