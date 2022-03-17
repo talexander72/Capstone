@@ -36,23 +36,37 @@ def chunker(fitted, chunksize, hopsize):
         frames.append(chunk)
     return frames
 
+
+def open_window(format):
+    window = sg.Window("Results and Training", format, modal=True)
+    choice = None
+    while True:
+        event, values = window.read()
+        if event == "Exit" or event == sg.WIN_CLOSED:
+            break
+
+    window.close()
+
 # main landing page layout
 sg.theme('Black')
 layout = \
     [[sg.Text("Path to Folder:"), sg.Input(key="-IN-", change_submits=True), sg.FolderBrowse(key="-IN-")],
-    [sg.Text('__'*30)],
-    [sg.Text('Preprocessing Pipeline: before feature extraction, audio must be "chunked" into equal size segments')],
-    [sg.Text('Enter a Chunk Size (samples)'), sg.Slider(range=(256, 8192), key="-CHUNK-", default_value=2048, size=(40, 20), orientation='horizontal')],
-    [sg.Text('Enter an Overlap Ratio (percent)'), sg.Slider(range=(0, 99), key="-HOP-", default_value=0, size=(40, 20), orientation='horizontal')],
-    [sg.Text('Smaller datasets may benefit from cross validation. Implement K-Fold Cross Validation?)'), sg.Radio('Yes', "RADIO1"), sg.Radio('No', "RADIO1", default=True)],
-    [sg.Text('(Step 1 of 3) Launch Preprocessing Pipeline:'), sg.Button('Ok', key="-READ-"), sg.Button('Cancel', key="-READX-")],
-    [sg.Text('__'*30)],
-    [sg.Text('Feature Extraction: Audio features are computed and averaged across chunks')],
-    [sg.Text('How many features would you like to test?'), sg.Slider(range=(1,10), default_value=10, size=(40,28), orientation='horizontal')],
-    [sg.Text('(Step 2 of 3) Launch Feature Extraction:'), sg.Button('Ok', key="-FEAT-"), sg.Button('Cancel', key="-FEATX-")],
-    [sg.Text('__'*30)]]
+     [sg.Text('__'*30)],
+     [sg.Text('Preprocessing Pipeline: before feature extraction, audio must be "chunked" into equal size segments')],
+     [sg.Text('Enter a Chunk Size (samples):    '), sg.Slider(range=(256, 8192), key="-CHUNK-", default_value=2048, size=(40, 20), orientation='horizontal')],
+     [sg.Text('Enter an Overlap Ratio (percent):'), sg.Slider(range=(0, 99), key="-HOP-", default_value=50, size=(40, 20), orientation='horizontal')],
+     [sg.Text('Smaller datasets may benefit from cross validation. Implement K-Fold Cross Validation?)'), sg.Radio('Yes', "RADIO1"), sg.Radio('No', "RADIO1", default=True)],
+     [sg.Text('    (Step 1 of 3) Launch Preprocessing:    '), sg.Button('LAUNCH', key="-READ-"), sg.Button('Cancel', key="-READX-")],
+     [sg.Text('__'*30)],
+     [sg.Text('Feature Extraction: Audio features are computed and averaged across chunks')],
+     [sg.Text('How many features would you like to test?'), sg.Slider(range=(1,10), default_value=10, size=(40,28), orientation='horizontal')],
+     [sg.Text('    (Step 2 of 3) Launch Feature Extraction:'), sg.Button('LAUNCH', key="-FEAT-"), sg.Button('Cancel', key="-FEATX-")],
+     [sg.Text('__'*30)],
+     [sg.Text('Model Training: multiple machine learning models which each have their own "flavor" of prediction')],
+     [sg.Text('How many models would you like to train?'), sg.Slider(range(1,5), default_value=5, size=(40,28), orientation='horizontal')],
+     [sg.Text('    (Step 3 of 3) Launch Model Training:     '), sg.Button('LAUNCH', key="-MODEL-"), sg.Button('Cancel', key="-MODELX-")]]
 
-window = sg.Window('Enhanced Feature Selection', layout, element_justification='c')
+window = sg.Window('Enhanced Feature Selection', layout, element_justification='l')
 featuresbool = False
 modelbool = False   # deactivating buttons that aren't supposed to be used yet
 
@@ -62,10 +76,10 @@ while True:
     if event == "-READ-":   # upon hitting step 1 'OK' button
         featuresbool = True     # activates step 2 'OK' button
         chunksize = values["-CHUNK-"]
-        hopsize = (1 - values["-HOP-"]) * chunksize
+        hopsize = (1 - (values["-HOP-"])/100) * chunksize
         classes = os.listdir(values["-IN-"])
         entries1 = os.listdir(values["-IN-"] + '/' + classes[1])
-        entries2 = os.listdir(values["-IN-"] + '/' + classes[2])    #
+        entries2 = os.listdir(values["-IN-"] + '/' + classes[2])
         total = len(entries1) + len(entries2)
         classA = []
         classB = []
