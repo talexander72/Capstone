@@ -35,16 +35,17 @@ def chunker(fitted, chunksize, hopsize):
         frames.append(chunk)
     return frames
 
+fList = ['SpectralCentroid','SpectralCrestFactor','SpectralDecrease','SpectralFlatness','SpectralFlux','SpectralKurtosis','SpectralMfccs','SpectralPitchChroma','SpectralRolloff','SpectralSkewness','SpectralSlope','SpectralSpread','SpectralTonalPowerRatio','TimeAcfCoeff','TimeMaxAcf','TimePeakEnvelope','TimePredictivityRatio','TimeRms','TimeStd','TimeZeroCrossingRate']
 
-def open_window(format):
-    window = sg.Window("Results and Training", format, modal=True)
-    choice = None
-    while True:
-        event, values = window.read()
-        if event == "Exit" or event == sg.WIN_CLOSED:
-            break
 
-    window.close()
+def features(feature, files, fs):
+    specList = []
+    for i in files:
+        fs = i[0]
+        x = i[1]
+        [vsf,t] = pyACA.computeFeature(feature, x, fs, afWindow=None, iBlockLength=chunksize, iHopLength=hopsize)
+        specList.append([vsf,t])
+    return specList
 
 
 # main landing page layout
@@ -59,20 +60,21 @@ layout = \
      [sg.Text('    (Step 1 of 3) Launch Preprocessing:    '), sg.Button('LAUNCH', key="-READ-"), sg.Button('Cancel', key="-READX-")],
      [sg.Text('__'*30)],
      [sg.Text('Feature Extraction: Audio features are computed and averaged across chunks')],
-     [sg.Text('How many features would you like to test?'), sg.Slider(range=(1,18), default_value=18, size=(40,28), orientation='horizontal')],
+     [sg.Text('How many features would you like to test?'), sg.Slider(range=(1,18), key="-FEATURESNUM-", default_value=18, size=(40,28), orientation='horizontal')],
      [sg.Text('    (Step 2 of 3) Launch Feature Extraction:'), sg.Button('LAUNCH', key="-FEAT-"), sg.Button('Cancel', key="-FEATX-")],
      [sg.Text('__'*30)],
      [sg.Text('Model Training: multiple machine learning models which each have their own "flavor" of prediction')],
-     [sg.Text('How many models would you like to train?'), sg.Slider(range=(1,5), default_value=5, size=(40,28), orientation='horizontal')],
+     [sg.Text('How many models would you like to train?'), sg.Slider(range=(1,5), key="-MODELSNUM-", default_value=5, size=(40,28), orientation='horizontal')],
      [sg.Text('    (Step 3 of 3) Launch Model Training:     '), sg.Button('LAUNCH', key="-MODEL-"), sg.Button('Cancel', key="-MODELX-")],
      [sg.Text('View Results: '), sg.Button('GO', key="-RESULTS-")]]
 
+# results page layout
 layout2 = \
-    [[sg.Text("Path to Folder:"), sg.Input(key="-IN-", change_submits=True), sg.FolderBrowse(key="-IN-")],
+    [[sg.Text("Optimization Curve:")],
      [sg.Text('__'*30)]]
 
-window = sg.Window('Enhanced Feature Selection', layout, element_justification='l')
-window2 = sg.Window("Results and Training", layout2, modal=True)
+window = sg.Window('Setup and Training', layout, element_justification='l')
+window2 = sg.Window('Results and Code', layout2, modal=True)
 
 featuresbool = False
 modelbool = False       # deactivating buttons that aren't supposed to be used yet
@@ -111,10 +113,20 @@ while True:
                 i = i + 1
     elif event == "-FEAT-" and featuresbool:    # upon hitting step 2 'Launch' button
         modelbool = True                        # activates step 3 'Launch' button
+        featuresA = []
+        featuresB = []
         for i in range(total):
             if not sg.one_line_progress_meter('Feature Extraction Progress', i+1, total, 'step 2 of 3: extracting audio features'):
                 break
-            #for f in range(10):
+            for f in range(values["-FEATURESNUM-"]):   # limits number of features to user selection from slider
+                if i < total/2:
+                    currentfileA = chunksA[i]
+                    currentfeatureA = features(fList[f], currentfileA, fs)
+                    featuresA.append(currentfeatureA)
+                else:
+                    currentfileB = chunksB[i-(total/2)]
+                    currentfeatureB = features(fList[f], currentfileB, fs)
+                    featuresB.append(currentfeatureB)
     elif event == "-MODEL-" and featuresbool and modelbool:     # upon hitting step 3 'Launch' button
         for i in range(total):
             count = count + 1
@@ -122,7 +134,7 @@ while True:
                 break
             elif count==total:
                 resultspage = True
-    elif event == "-RESULTS-" and resultspage:      # launches results window
+    elif event == "-RESULTS-" and resultspage:      # launch results window
         window.close()
         while True:
             event2, values2 = window2.read()
