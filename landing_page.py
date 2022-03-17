@@ -5,7 +5,6 @@ import os
 import pandas as pd
 import numpy as np
 import math
-import pyAudioAnalysis
 #from sklearn.model_selection import StratifiedKFold, KFold
 
 
@@ -47,6 +46,7 @@ def open_window(format):
 
     window.close()
 
+
 # main landing page layout
 sg.theme('Black')
 layout = \
@@ -59,22 +59,31 @@ layout = \
      [sg.Text('    (Step 1 of 3) Launch Preprocessing:    '), sg.Button('LAUNCH', key="-READ-"), sg.Button('Cancel', key="-READX-")],
      [sg.Text('__'*30)],
      [sg.Text('Feature Extraction: Audio features are computed and averaged across chunks')],
-     [sg.Text('How many features would you like to test?'), sg.Slider(range=(1,10), default_value=10, size=(40,28), orientation='horizontal')],
+     [sg.Text('How many features would you like to test?'), sg.Slider(range=(1,18), default_value=18, size=(40,28), orientation='horizontal')],
      [sg.Text('    (Step 2 of 3) Launch Feature Extraction:'), sg.Button('LAUNCH', key="-FEAT-"), sg.Button('Cancel', key="-FEATX-")],
      [sg.Text('__'*30)],
      [sg.Text('Model Training: multiple machine learning models which each have their own "flavor" of prediction')],
-     [sg.Text('How many models would you like to train?'), sg.Slider(range(1,5), default_value=5, size=(40,28), orientation='horizontal')],
-     [sg.Text('    (Step 3 of 3) Launch Model Training:     '), sg.Button('LAUNCH', key="-MODEL-"), sg.Button('Cancel', key="-MODELX-")]]
+     [sg.Text('How many models would you like to train?'), sg.Slider(range=(1,5), default_value=5, size=(40,28), orientation='horizontal')],
+     [sg.Text('    (Step 3 of 3) Launch Model Training:     '), sg.Button('LAUNCH', key="-MODEL-"), sg.Button('Cancel', key="-MODELX-")],
+     [sg.Text('View Results: '), sg.Button('GO', key="-RESULTS-")]]
+
+layout2 = \
+    [[sg.Text("Path to Folder:"), sg.Input(key="-IN-", change_submits=True), sg.FolderBrowse(key="-IN-")],
+     [sg.Text('__'*30)]]
 
 window = sg.Window('Enhanced Feature Selection', layout, element_justification='l')
-featuresbool = False
-modelbool = False   # deactivating buttons that aren't supposed to be used yet
+window2 = sg.Window("Results and Training", layout2, modal=True)
 
-# launching landing page
+featuresbool = False
+modelbool = False       # deactivating buttons that aren't supposed to be used yet
+resultspage = False     # initializing results window in the background
+count = 0               # initializing tracker for window 2 launch event
+
+# launching landing page:
 while True:
     event, values = window.read()
-    if event == "-READ-":   # upon hitting step 1 'OK' button
-        featuresbool = True     # activates step 2 'OK' button
+    if event == "-READ-":       # upon hitting step 1 'Launch' button
+        featuresbool = True     # activates step 2 'Launch' button
         chunksize = values["-CHUNK-"]
         hopsize = (1 - (values["-HOP-"])/100) * chunksize
         classes = os.listdir(values["-IN-"])
@@ -100,11 +109,25 @@ while True:
                 classA.append([fs, x[:, 2]])
                 chunksA.append(framesA)
                 i = i + 1
-    elif event == "-FEAT-" and featuresbool:    # upon hitting step 2 'OK' button
+    elif event == "-FEAT-" and featuresbool:    # upon hitting step 2 'Launch' button
+        modelbool = True                        # activates step 3 'Launch' button
         for i in range(total):
-            if not sg.one_line_progress_meter('File Read Progress', i+1, total, 'step 2 of 3: extracting features'):
+            if not sg.one_line_progress_meter('Feature Extraction Progress', i+1, total, 'step 2 of 3: extracting audio features'):
                 break
             #for f in range(10):
+    elif event == "-MODEL-" and featuresbool and modelbool:     # upon hitting step 3 'Launch' button
+        for i in range(total):
+            count = count + 1
+            if not sg.one_line_progress_meter('Model Training Progress', i+1, total, 'step 3 of 3: training machine learning models'):
+                break
+            elif count==total:
+                resultspage = True
+    elif event == "-RESULTS-" and resultspage:      # launches results window
+        window.close()
+        while True:
+            event2, values2 = window2.read()
+            if event2 == "Exit" or event2 == sg.WIN_CLOSED:
+                break
     elif event == sg.WIN_CLOSED or event == "Exit" or event == '-READX-' or event == '-FEATX-':
         break
 
