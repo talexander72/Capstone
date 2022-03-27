@@ -44,7 +44,7 @@ fList = ['SpectralCentroid', 'SpectralCrestFactor', 'SpectralDecrease', 'Spectra
 
 
 def features(feature, file, f_s):
-    [vsf, t] = pyACA.computeFeature(feature, file, f_s, afWindow=None, iBlockLength=chunkSize, iHopLength=hopSize)
+    [vsf, t] = pyACA.computeFeature(feature, file, f_s, iBlockLength=chunkSize, iHopLength=hopSize)
     return vsf
 
 
@@ -100,25 +100,28 @@ while True:
         featuresA = []
         featuresB = []
         for i in range(total):  # step 1 progress bar
-            if not sg.one_line_progress_meter('File Read Progress', i+1, total, 'step 1 of 3: parsing data'):
+            if not sg.one_line_progress_meter('Feature Extraction Progress', i+1, total, 'step 1 of 2: feature extraction'):
                 break
             if i >= len(entries1):  # processing class B
                 [fs, x2] = read(values["-IN-"] + '/' + classes[2] + '/' + entries2[i-len(entries1)])
                 for f in range(int(values["-FEATURESNUM-"])):
                     current_feature = features(fList[f], x2, fs)
+                    current_feature[:] = current_feature[:] / max(current_feature)
                     featuresA.append(current_feature)
                 i = i + 1
             else:   # processing class A
                 [fs, x] = read(values["-IN-"] + '/' + classes[1] + '/' + entries1[i])
                 for f in range(int(values["-FEATURESNUM-"])):
                     current_feature = features(fList[f], x, fs)
+                    current_feature[:] = current_feature[:] / max(current_feature)
                     featuresB.append(current_feature)
                 i = i + 1
     elif event == "-MODEL-" and modelBool:     # upon hitting step 2 'Launch' button
         for i in range(total):
             count = count + 1
-            if not sg.one_line_progress_meter('Model Training Progress', i+1, total, 'step 3 of 3: training machine learning models'):
+            if not sg.one_line_progress_meter('Model Training Progress', i+1, total, 'step 2 of 2: training machine learning models'):
                 break
+
             elif count == total:
                 resultsBool = True
     elif event == "-RESULTS-" and resultsBool:      # launch results window
