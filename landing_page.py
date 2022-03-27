@@ -107,17 +107,25 @@ while True:
                 for f in range(int(values["-FEATURESNUM-"])):
                     current_feature = features(fList[f], x2, fs)
                     current_feature[:] = current_feature[:] / max(current_feature)
-                    featuresA.append(current_feature)
+                    for f in range(len(current_feature)-1):
+                        featuresA.append(current_feature[f])
                 i = i + 1
             else:   # processing class A
                 [fs, x] = read(values["-IN-"] + '/' + classes[1] + '/' + entries1[i])
                 for f in range(int(values["-FEATURESNUM-"])):
                     current_feature = features(fList[f], x, fs)
                     current_feature[:] = current_feature[:] / max(current_feature)
-                    featuresB.append(current_feature)
+                    for f in range(len(current_feature) - 1):
+                        featuresB.append(current_feature[f])
                 i = i + 1
     elif event == "-MODEL-" and modelBool:     # upon hitting step 2 'Launch' button
-        for i in range(total):
+        data1 = np.ones(len(featuresA))
+        data2 = np.zeros(len(featuresB))
+        data3 = np.concatenate((data1, data2))
+        data4 = np.concatenate((featuresA, featuresB))
+        data = np.array([data3, data4])
+        model_data = pd.DataFrame(data).transpose()
+        for i in range("-MODELSNUM-"):
             count = count + 1
             if not sg.one_line_progress_meter('Model Training Progress', i+1, total, 'step 2 of 2: training machine learning models'):
                 break
