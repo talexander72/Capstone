@@ -125,7 +125,7 @@ while True:
         data4 = np.concatenate((featuresA, featuresB))
         data = np.array([data3, data4])
         model_data = pd.DataFrame(data).transpose()
-        for i in range("-MODELSNUM-"):
+        for i in range(int(values["-MODELSNUM-"])):
             count = count + 1
             if not sg.one_line_progress_meter('Model Training Progress', i+1, total, 'step 2 of 2: training machine learning models'):
                 break
