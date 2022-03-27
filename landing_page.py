@@ -2,39 +2,23 @@
 import PySimpleGUI as sg
 from scipy.io.wavfile import read
 import os
+
 import pandas as pd
 import numpy as np
 import math
 import pyACA
+
 from sklearn.model_selection import StratifiedKFold, KFold
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn import svm
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
 
-
-def chunk_fit(in1, chunk_size, hop_size):     # in1 is current audio file
-    # adds zero padding if necessary to current audio file
-    fit = ((len(in1)-(chunk_size + 1))/hop_size) + 1
-    if fit - math.floor(fit) != 0:
-        add = ((math.ceil(fit)-1)*hop_size + chunk_size + 1) - len(in1)
-        add1 = add//2
-        add2 = add-add1     # add1 = number of zeros before audio, add2 = number of zeros after audio
-        add1 = int(add1)
-        add2 = int(add2)
-        add1 = np.zeros(add1)
-        add2 = np.zeros(add2)
-        fitted = [*add1, *in1, *add2]
-    else:
-        fitted = [*in1]
-    return fitted
-
-
-def chunker(fitted, chunk_size, hop_size):
-    # divides current audio file into equal sized segments
-    frames = []
-    fitted = chunk_fit(fitted, chunk_size, hop_size)
-    num_chunks = ((len(fitted)-(chunk_size + 1))/hop_size) + 1
-    for c in range(int(num_chunks)):
-        chunk = fitted[int(hop_size)*c:(int(hop_size)*c)+int(chunk_size)]
-        frames.append(chunk)
-    return frames
+from itertools import combinations
+from sklearn.base import clone
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import balanced_accuracy_score
 
 
 fList = ['SpectralCentroid', 'SpectralCrestFactor', 'SpectralDecrease', 'SpectralFlatness', 'SpectralFlux',
@@ -46,6 +30,12 @@ fList = ['SpectralCentroid', 'SpectralCrestFactor', 'SpectralDecrease', 'Spectra
 def features(feature, file, f_s):
     [vsf, t] = pyACA.computeFeature(feature, file, f_s, iBlockLength=chunkSize, iHopLength=hopSize)
     return vsf
+
+
+model1 = LogisticRegression(solver='lbfgs', max_iter=200)  # binary logistic regression
+model2 = svm.SVC()
+model3 = KNeighborsClassifier(n_neighbors=3)
+model4 = RandomForestClassifier(max_depth=2, random_state=0)
 
 
 # main landing page layout
@@ -65,13 +55,14 @@ layout = \
                                                                sg.Button('Cancel', key="-FEATX-")],
      [sg.Text('__'*46)],
      [sg.Text('Model Training: multiple machine learning models which each have their own "flavor" of prediction')],
-     [sg.Text('How many models would you like to train?'), sg.Slider(range=(1, 5),
-                                                                     key="-MODELSNUM-", default_value=5,
+     [sg.Text('How many models would you like to train?'), sg.Slider(range=(1, 4),
+                                                                     key="-MODELSNUM-", default_value=4,
                                                                      size=(40,28),orientation='horizontal')],
      [sg.Text('    (Step 2 of 2) Launch Model Training:     '), sg.Button('LAUNCH', key="-MODEL-"),
                                                                 sg.Button('Cancel', key="-MODELX-")],
      [sg.Text('__'*46)],
      [sg.Text('View Results: '), sg.Button('GO', key="-RESULTS-")]]
+
 
 # results page layout
 layout2 = \
@@ -79,12 +70,14 @@ layout2 = \
      [sg.Text('__'*30)]]
      #[sg.Image(filename='/Users/tuckeralexander/Desktop/Classes/Capstone/Results/example_1', key="-IMAGE-")]]
 
+
 window = sg.Window('Setup and Training', layout, element_justification='l')
 window2 = sg.Window('Results and Code', layout2, modal=True)
 
 modelBool = False       # deactivating buttons that aren't supposed to be used yet
 resultsBool = False     # initializing results window in the background
 count = 0               # initializing tracker for window 2 launch event
+
 
 # launching landing page:
 while True:
@@ -123,22 +116,39 @@ while True:
         data2 = np.zeros(len(featuresB))
         data3 = np.concatenate((data1, data2))
         data4 = np.concatenate((featuresA, featuresB))
-        data = np.array([data3, data4])
-        model_data = pd.DataFrame(data).transpose()
-        for i in range(int(values["-MODELSNUM-"])):
+        data5 = np.array([data3, data4])
+        model_data = pd.DataFrame(data5).transpose()
+        predictors = model_data.iloc[:, 1:]
+        categories = model_data.iloc[:, 0]
+        cat_train, cat_test, pred_train, pred_test = train_test_split(categories, predictors, test_size=.2,
+                                                                      random_state=25)
+        model1.fit(pred_train, cat_train)
+        for i in range(0, int(values["-MODELSNUM-"])):
             count = count + 1
-            if not sg.one_line_progress_meter('Model Training Progress', i+1, total, 'step 2 of 2: training machine learning models'):
+            if not sg.one_line_progress_meter('Model Training Progress', i+1, int(values["-MODELSNUM-"]),
+                                              'step 2 of 2: training models'):
                 break
-
-            elif count == total:
-                resultsBool = True
+            if i == 0:
+                model1.fit(pred_train, cat_train)
+                predictions1 = model1.predict(pred_test)
+            elif i == 1:
+                model2.fit(pred_train, cat_train)
+                predictions2 = model2.predict(pred_test)
+            elif i == 2:
+                model3.fit(pred_train, cat_train)
+                predictions3 = model3.predict(pred_test)
+            elif i == 3:
+                model4.fit(pred_train, cat_train)
+                predictions4 = model4.predict(pred_test)
+            #if count == int(values["-MODELSNUM-"]):
+            #    resultsBool = True
     elif event == "-RESULTS-" and resultsBool:      # launch results window
         window.close()
         while True:
             event2, values2 = window2.read()
             if event2 == "Exit" or event2 == sg.WIN_CLOSED:
                 break
-    elif event == sg.WIN_CLOSED or event == "Exit" or event == '-READX-' or event == '-FEATX-':
+    elif event == sg.WIN_CLOSED or event == "Exit" or event == '-FEATX-' or event == '-MODELX-':
         break
 
 
