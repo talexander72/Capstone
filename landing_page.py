@@ -6,6 +6,7 @@ import os
 import pandas as pd
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 import pyACA
 
 from sklearn.model_selection import StratifiedKFold, KFold
@@ -37,6 +38,87 @@ model2 = svm.SVC()
 model3 = KNeighborsClassifier(n_neighbors=3)
 model4 = RandomForestClassifier(max_depth=2, random_state=0)
 
+
+class SequentialForwardSelection():
+
+    def __init__(self, estimator, k_features):
+        self.scores_ = []
+        self.subsets_ = []
+        self.estimator = clone(estimator)
+        self.k_features = k_features
+
+    def fit(self, x_train, x_test, y_train, y_test):
+        max_indices = tuple(range(x_train.shape[1]))
+        total_features_count = len(max_indices)
+        self.indices_ = []
+
+        # Iterate through the feature space to find the first feature which gives the maximum model performance
+
+        scores = []
+        subsets = []
+
+        for p in combinations(max_indices, r=1):
+            score = self._calc_score(x_train.values, x_test.values, y_train.values, y_test.values, p)
+            scores.append(score)
+            subsets.append(p)
+
+        # Find the single feature having best score
+
+        best_score_index = np.argmax(scores)
+        self.scores_.append(scores[best_score_index])
+        self.indices_ = list(subsets[best_score_index])
+        self.subsets_.append(self.indices_)
+
+        # Add a feature one by one until k_features is reached
+
+        dim = 1
+        while dim < self.k_features:
+            scores = []
+            subsets = []
+            current_feature = dim
+
+            # Add the remaining features one-by-one from the remaining feature set
+            # Calculate the score for every feature combinations
+
+            idx = 0
+            while idx < total_features_count:
+                if idx not in self.indices_:
+                    indices = list(self.indices_)
+                    indices.append(idx)
+                    score = self._calc_score(x_train.values, x_test.values, y_train.values, y_test.values, indices)
+                    scores.append(score)
+                    subsets.append(indices)
+                idx += 1
+
+            best_score_index = np.argmax(scores)    # Get the index of best score
+
+            self.scores_.append(scores[best_score_index])   # Record the best score
+
+            self.indices_ = list(subsets[best_score_index])   # Get the indices of features which gave best score
+
+            self.subsets_.append(self.indices_)   # Record the indices of features for best score
+            dim += 1
+        self.k_score_ = self.scores_[-1]
+
+    # Transform training, test data set to the data set having features which gave best score
+
+    def transform(self, X):
+        return X.values[:, self.indices_]
+
+    # Train models with specific set of features indices - indices of features
+
+    # FOR CV PUT AN IF STATEMENT IN HERE ************************************************
+    def _calc_score(self, x_train, x_test, y_train, y_test, indices):
+        # model1 = LogisticRegression(solver='lbfgs',max_iter=200) #binary logistic regression
+        # model1.fit(X_train, y_train)
+        # predictions = model1.predict(X_test)
+        # cm = confusion_matrix(y_test, predictions1)
+        # score = (cm[0,0]+cm[1,1]) / sum(sum(cm))
+
+        self.estimator.fit(x_train[:, indices], y_train.ravel())
+        y_pred = self.estimator.predict(x_test[:, indices])
+        score = accuracy_score(y_test, y_pred)
+        return score
 
 # main landing page layout
 sg.theme('Black')
@@ -130,20 +212,44 @@ while True:
                 break
             if i == 0:
                 model1.fit(pred_train, cat_train)
-                predictions1 = model1.predict(pred_test)
+                sfs1 = SequentialForwardSelection(model1, int(values["-FEATURESNUM-"]))
+                sfs1.fit(pred_train, pred_test, cat_train, cat_test)
+                pred_train_sfs1 = sfs1.transform(pred_train)
+                pred_test_sfs1 = sfs1.transform(pred_test)
             elif i == 1:
                 model2.fit(pred_train, cat_train)
-                predictions2 = model2.predict(pred_test)
+                sfs2 = SequentialForwardSelection(model2, int(values["-FEATURESNUM-"]))
+                sfs2.fit(pred_train, pred_test, cat_train, cat_test)
+                pred_train_sfs2 = sfs2.transform(pred_train)
+                pred_test_sfs2 = sfs2.transform(pred_test)
             elif i == 2:
                 model3.fit(pred_train, cat_train)
-                predictions3 = model3.predict(pred_test)
+                sfs3 = SequentialForwardSelection(model3, int(values["-FEATURESNUM-"]))
+                sfs3.fit(pred_train, pred_test, cat_train, cat_test)
+                pred_train_sfs3 = sfs3.transform(pred_train)
+                pred_test_sfs3 = sfs3.transform(pred_test)
             elif i == 3:
                 model4.fit(pred_train, cat_train)
-                predictions4 = model4.predict(pred_test)
-            #if count == int(values["-MODELSNUM-"]):
-            #    resultsBool = True
+                sfs4 = SequentialForwardSelection(model4, int(values["-FEATURESNUM-"]))
+                sfs4.fit(pred_train, pred_test, cat_train, cat_test)
+                pred_train_sfs4 = sfs4.transform(pred_train)
+                pred_test_sfs4 = sfs4.transform(pred_test)
+            if count == int(values["-MODELSNUM-"]):
+                resultsBool = True
     elif event == "-RESULTS-" and resultsBool:      # launch results window
         window.close()
+        k_features = [len(k) for k in sfs1.subsets_]
+        plt.plot(k_features, sfs1.scores_, label='Logistic Regression', marker='o')
+        plt.plot(k_features, sfs2.scores_, label='Support Vector Machine', marker='o')
+        plt.plot(k_features, sfs3.scores_, label='K Nearest Neighbor', marker='o')
+        plt.plot(k_features, sfs4.scores_, marker='o', label='Random Forest')
+
+        plt.ylim([.33, 1.02])
+        plt.ylabel('Accuracy')
+        plt.xlabel('Number of features')
+        plt.grid()
+        plt.tight_layout()
+        plt.legend()
         while True:
             event2, values2 = window2.read()
             if event2 == "Exit" or event2 == sg.WIN_CLOSED:
