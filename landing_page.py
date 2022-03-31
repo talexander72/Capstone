@@ -15,11 +15,16 @@ from sklearn.linear_model import LogisticRegression
 from sklearn import svm
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
 
 from itertools import combinations
 from sklearn.base import clone
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import balanced_accuracy_score
+from mlxtend.feature_selection import SequentialFeatureSelector as SFS
+from mlxtend.plotting import plot_sequential_feature_selection as plot_sfs
+
 
 
 fList = ['SpectralCentroid', 'SpectralCrestFactor', 'SpectralDecrease', 'SpectralFlatness', 'SpectralFlux',
@@ -38,87 +43,6 @@ model2 = svm.SVC()
 model3 = KNeighborsClassifier(n_neighbors=3)
 model4 = RandomForestClassifier(max_depth=2, random_state=0)
 
-
-class SequentialForwardSelection():
-
-    def __init__(self, estimator, k_features):
-        self.scores_ = []
-        self.subsets_ = []
-        self.estimator = clone(estimator)
-        self.k_features = k_features
-
-    def fit(self, x_train, x_test, y_train, y_test):
-        max_indices = tuple(range(x_train.shape[1]))
-        total_features_count = len(max_indices)
-        self.indices_ = []
-
-        # Iterate through the feature space to find the first feature which gives the maximum model performance
-
-        scores = []
-        subsets = []
-
-        for p in combinations(max_indices, r=1):
-            score = self._calc_score(x_train.values, x_test.values, y_train.values, y_test.values, p)
-            scores.append(score)
-            subsets.append(p)
-
-        # Find the single feature having best score
-
-        best_score_index = np.argmax(scores)
-        self.scores_.append(scores[best_score_index])
-        self.indices_ = list(subsets[best_score_index])
-        self.subsets_.append(self.indices_)
-
-        # Add a feature one by one until k_features is reached
-
-        dim = 1
-        while dim < self.k_features:
-            scores = []
-            subsets = []
-            current_feature = dim
-
-            # Add the remaining features one-by-one from the remaining feature set
-            # Calculate the score for every feature combinations
-
-            idx = 0
-            while idx < total_features_count:
-                if idx not in self.indices_:
-                    indices = list(self.indices_)
-                    indices.append(idx)
-                    score = self._calc_score(x_train.values, x_test.values, y_train.values, y_test.values, indices)
-                    scores.append(score)
-                    subsets.append(indices)
-                idx += 1
-
-            best_score_index = np.argmax(scores)    # Get the index of best score
-
-            self.scores_.append(scores[best_score_index])   # Record the best score
-
-            self.indices_ = list(subsets[best_score_index])   # Get the indices of features which gave best score
-
-            self.subsets_.append(self.indices_)   # Record the indices of features for best score
-            dim += 1
-        self.k_score_ = self.scores_[-1]
-
-    # Transform training, test data set to the data set having features which gave best score
-
-    def transform(self, X):
-        return X.values[:, self.indices_]
-
-    # Train models with specific set of features indices - indices of features
-
-    # FOR CV PUT AN IF STATEMENT IN HERE ************************************************
-    def _calc_score(self, x_train, x_test, y_train, y_test, indices):
-        # model1 = LogisticRegression(solver='lbfgs',max_iter=200) #binary logistic regression
-        # model1.fit(X_train, y_train)
-        # predictions = model1.predict(X_test)
-        # cm = confusion_matrix(y_test, predictions1)
-        # score = (cm[0,0]+cm[1,1]) / sum(sum(cm))
-
-        self.estimator.fit(x_train[:, indices], y_train.ravel())
-        y_pred = self.estimator.predict(x_test[:, indices])
-        score = accuracy_score(y_test, y_pred)
-        return score
 
 # main landing page layout
 sg.theme('Black')
@@ -174,66 +98,65 @@ while True:
         total = len(entries1) + len(entries2)
         featuresA = []
         featuresB = []
+        feature_names = []
         for i in range(total):  # step 1 progress bar
             if not sg.one_line_progress_meter('Feature Extraction Progress', i+1, total, 'step 1 of 2: feature extraction'):
                 break
             if i >= len(entries1):  # processing class B
                 [fs, x2] = read(values["-IN-"] + '/' + classes[2] + '/' + entries2[i-len(entries1)])
-                for f in range(int(values["-FEATURESNUM-"])):
-                    current_feature = features(fList[f], x2, fs)
-                    current_feature[:] = current_feature[:] / max(current_feature)
-                    for f in range(len(current_feature)-1):
-                        featuresA.append(current_feature[f])
-                i = i + 1
+                x2 = x2[:, 0]  # grabbing only channel 1
             else:   # processing class A
                 [fs, x] = read(values["-IN-"] + '/' + classes[1] + '/' + entries1[i])
-                for f in range(int(values["-FEATURESNUM-"])):
-                    current_feature = features(fList[f], x, fs)
-                    current_feature[:] = current_feature[:] / max(current_feature)
-                    for f in range(len(current_feature) - 1):
-                        featuresB.append(current_feature[f])
-                i = i + 1
+                x = x[:, 0]  # grabbing only channel 1
+        for f in range(int(values["-FEATURESNUM-"])):
+            feature_names.append(fList[f])
+            current_featureA = features(fList[f], x2, fs)
+            current_featureA[:] = current_featureA[:] / max(current_featureA)
+            featuresA.append(current_featureA)
+            current_featureB = features(fList[f], x, fs)
+            current_featureB[:] = current_featureB[:] / max(current_featureB)
+            featuresB.append(current_featureB)
     elif event == "-MODEL-" and modelBool:     # upon hitting step 2 'Launch' button
-        data1 = np.ones(len(featuresA))
-        data2 = np.zeros(len(featuresB))
+        data1 = np.ones(len(featuresA[0]))
+        data2 = np.zeros(len(featuresB[0]))
         data3 = np.concatenate((data1, data2))
-        data4 = np.concatenate((featuresA, featuresB))
-        data5 = np.array([data3, data4])
-        model_data = pd.DataFrame(data5).transpose()
-        predictors = model_data.iloc[:, 1:]
-        categories = model_data.iloc[:, 0]
-        cat_train, cat_test, pred_train, pred_test = train_test_split(categories, predictors, test_size=.2,
-                                                                      random_state=25)
-        model1.fit(pred_train, cat_train)
+        data5 = []
+        for d in range(int(values["-FEATURESNUM-"])):
+            data4 = np.concatenate([featuresA[d], featuresB[d]])
+            data5.append(data4)
+        # predictors = model_data.iloc[:, 1:]
+        # categories = model_data.iloc[:, 0]
+        categories = pd.DataFrame(data3)
+        predictors = pd.DataFrame(data5).transpose()
+        predictors.columns = feature_names
+        #cat_train, cat_test, pred_train, pred_test = train_test_split(categories, predictors, test_size=.2,
+        #                                                              random_state=25)
         for i in range(0, int(values["-MODELSNUM-"])):
             count = count + 1
-            if not sg.one_line_progress_meter('Model Training Progress', i+1, int(values["-MODELSNUM-"]),
-                                              'step 2 of 2: training models'):
+            if not sg.one_line_progress_meter('Model Evaluation Progress', i+1, int(values["-MODELSNUM-"]),
+                                              'step 2 of 2: testing model performance'):
                 break
             if i == 0:
-                model1.fit(pred_train, cat_train)
-                sfs1 = SequentialForwardSelection(model1, int(values["-FEATURESNUM-"]))
-                sfs1.fit(pred_train, pred_test, cat_train, cat_test)
-                pred_train_sfs1 = sfs1.transform(pred_train)
-                pred_test_sfs1 = sfs1.transform(pred_test)
+                sfs1 = SFS(model1, k_features=int(values["-FEATURESNUM-"]), forward=True,
+                                                 floating=False, verbose=2, scoring='accuracy', cv=0)
+                pipe1 = make_pipeline(StandardScaler(), sfs1)
+                pipe1.fit(predictors, categories)
+                plot_sfs(sfs1.get_metric_dict(), kind='std_err');
             elif i == 1:
-                model2.fit(pred_train, cat_train)
-                sfs2 = SequentialForwardSelection(model2, int(values["-FEATURESNUM-"]))
-                sfs2.fit(pred_train, pred_test, cat_train, cat_test)
-                pred_train_sfs2 = sfs2.transform(pred_train)
-                pred_test_sfs2 = sfs2.transform(pred_test)
+                sfs2 = SFS(model2, k_features=int(values["-FEATURESNUM-"]), forward=True,
+                                                 floating=False, verbose=2, scoring='accuracy', cv=0)
+                pipe2 = make_pipeline(StandardScaler(), sfs1)
+                pipe2.fit(pred_train, cat_train)
             elif i == 2:
-                model3.fit(pred_train, cat_train)
-                sfs3 = SequentialForwardSelection(model3, int(values["-FEATURESNUM-"]))
-                sfs3.fit(pred_train, pred_test, cat_train, cat_test)
-                pred_train_sfs3 = sfs3.transform(pred_train)
-                pred_test_sfs3 = sfs3.transform(pred_test)
+                sfs3 = SFS(model3, k_features=int(values["-FEATURESNUM-"]), forward=True,
+                                                 floating=False, verbose=2, scoring='accuracy', cv=0)
+                pipe3 = make_pipeline(StandardScaler(), sfs1)
+                pipe3.fit(pred_train, cat_train)
             elif i == 3:
-                model4.fit(pred_train, cat_train)
-                sfs4 = SequentialForwardSelection(model4, int(values["-FEATURESNUM-"]))
-                sfs4.fit(pred_train, pred_test, cat_train, cat_test)
-                pred_train_sfs4 = sfs4.transform(pred_train)
-                pred_test_sfs4 = sfs4.transform(pred_test)
+                sfs4 = SFS(model4, k_features=int(values["-FEATURESNUM-"]), forward=True,
+                                                 floating=False, verbose=2, scoring='accuracy', cv=0)
+                pipe4 = make_pipeline(StandardScaler(), sfs1)
+                pipe4.fit(pred_train, cat_train)
             if count == int(values["-MODELSNUM-"]):
                 resultsBool = True
     elif event == "-RESULTS-" and resultsBool:      # launch results window
