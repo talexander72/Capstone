@@ -26,12 +26,12 @@ from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 from mlxtend.plotting import plot_sequential_feature_selection as plot_sfs
 
 
-
 fList = ['SpectralCentroid', 'SpectralCrestFactor', 'SpectralDecrease', 'SpectralFlatness', 'SpectralFlux',
          'SpectralKurtosis', 'SpectralMfccs', 'SpectralPitchChroma', 'SpectralRolloff', 'SpectralSkewness',
          'SpectralSlope', 'SpectralSpread', 'SpectralTonalPowerRatio', 'TimeAcfCoeff', 'TimeMaxAcf', 'TimePeakEnvelope',
          'TimePredictivityRatio', 'TimeRms', 'TimeStd', 'TimeZeroCrossingRate']
 
+fList = ['SpectralMfccs']
 
 def features(feature, file, f_s):
     [vsf, t] = pyACA.computeFeature(feature, file, f_s, iBlockLength=chunkSize, iHopLength=hopSize)
@@ -124,13 +124,11 @@ while True:
         for d in range(int(values["-FEATURESNUM-"])):
             data4 = np.concatenate([featuresA[d], featuresB[d]])
             data5.append(data4)
-        # predictors = model_data.iloc[:, 1:]
-        # categories = model_data.iloc[:, 0]
         categories = pd.DataFrame(data3)
         predictors = pd.DataFrame(data5).transpose()
         predictors.columns = feature_names
-        #cat_train, cat_test, pred_train, pred_test = train_test_split(categories, predictors, test_size=.2,
-        #                                                              random_state=25)
+        cat_train, cat_test, pred_train, pred_test = train_test_split(categories, predictors, test_size=.2,
+                                                                      random_state=25)
         for i in range(0, int(values["-MODELSNUM-"])):
             count = count + 1
             if not sg.one_line_progress_meter('Model Evaluation Progress', i+1, int(values["-MODELSNUM-"]),
@@ -141,38 +139,30 @@ while True:
                                                  floating=False, verbose=2, scoring='accuracy', cv=0)
                 pipe1 = make_pipeline(StandardScaler(), sfs1)
                 pipe1.fit(predictors, categories)
-                plot_sfs(sfs1.get_metric_dict(), kind='std_err');
             elif i == 1:
                 sfs2 = SFS(model2, k_features=int(values["-FEATURESNUM-"]), forward=True,
-                                                 floating=False, verbose=2, scoring='accuracy', cv=0)
-                pipe2 = make_pipeline(StandardScaler(), sfs1)
+                                                 floating=False, verbose=2, scoring='accuracy', cv=5)
+                pipe2 = make_pipeline(StandardScaler(), sfs2)
                 pipe2.fit(pred_train, cat_train)
             elif i == 2:
                 sfs3 = SFS(model3, k_features=int(values["-FEATURESNUM-"]), forward=True,
-                                                 floating=False, verbose=2, scoring='accuracy', cv=0)
-                pipe3 = make_pipeline(StandardScaler(), sfs1)
+                                                 floating=False, verbose=2, scoring='accuracy', cv=5)
+                pipe3 = make_pipeline(StandardScaler(), sfs3)
                 pipe3.fit(pred_train, cat_train)
             elif i == 3:
                 sfs4 = SFS(model4, k_features=int(values["-FEATURESNUM-"]), forward=True,
-                                                 floating=False, verbose=2, scoring='accuracy', cv=0)
-                pipe4 = make_pipeline(StandardScaler(), sfs1)
+                                                 floating=False, verbose=2, scoring='accuracy', cv=5)
+                pipe4 = make_pipeline(StandardScaler(), sfs4)
                 pipe4.fit(pred_train, cat_train)
             if count == int(values["-MODELSNUM-"]):
                 resultsBool = True
     elif event == "-RESULTS-" and resultsBool:      # launch results window
         window.close()
-        k_features = [len(k) for k in sfs1.subsets_]
-        plt.plot(k_features, sfs1.scores_, label='Logistic Regression', marker='o')
-        plt.plot(k_features, sfs2.scores_, label='Support Vector Machine', marker='o')
-        plt.plot(k_features, sfs3.scores_, label='K Nearest Neighbor', marker='o')
-        plt.plot(k_features, sfs4.scores_, marker='o', label='Random Forest')
-
-        plt.ylim([.33, 1.02])
-        plt.ylabel('Accuracy')
-        plt.xlabel('Number of features')
+        plot_sfs(sfs1.get_metric_dict(), kind='std_err');
+        plt.ylim([0.8, 1])
+        plt.title('Sequential Forward Selection (w. StdDev)')
         plt.grid()
-        plt.tight_layout()
-        plt.legend()
+        plt.show()
         while True:
             event2, values2 = window2.read()
             if event2 == "Exit" or event2 == sg.WIN_CLOSED:
