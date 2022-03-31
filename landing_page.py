@@ -27,11 +27,9 @@ from mlxtend.plotting import plot_sequential_feature_selection as plot_sfs
 
 
 fList = ['SpectralCentroid', 'SpectralCrestFactor', 'SpectralDecrease', 'SpectralFlatness', 'SpectralFlux',
-         'SpectralKurtosis', 'SpectralMfccs', 'SpectralPitchChroma', 'SpectralRolloff', 'SpectralSkewness',
-         'SpectralSlope', 'SpectralSpread', 'SpectralTonalPowerRatio', 'TimeAcfCoeff', 'TimeMaxAcf', 'TimePeakEnvelope',
-         'TimePredictivityRatio', 'TimeRms', 'TimeStd', 'TimeZeroCrossingRate']
+         'SpectralRolloff', 'SpectralSkewness', 'SpectralSpread', 'SpectralTonalPowerRatio']
 
-fList = ['SpectralMfccs']
+fList1 = ['SpectralMfccs']
 
 def features(feature, file, f_s):
     [vsf, t] = pyACA.computeFeature(feature, file, f_s, iBlockLength=chunkSize, iHopLength=hopSize)
@@ -111,10 +109,10 @@ while True:
         for f in range(int(values["-FEATURESNUM-"])):
             feature_names.append(fList[f])
             current_featureA = features(fList[f], x2, fs)
-            current_featureA[:] = current_featureA[:] / max(current_featureA)
+            #current_featureA[:] = current_featureA[:] / max(current_featureA)
             featuresA.append(current_featureA)
             current_featureB = features(fList[f], x, fs)
-            current_featureB[:] = current_featureB[:] / max(current_featureB)
+            #current_featureB[:] = current_featureB[:] / max(current_featureB)
             featuresB.append(current_featureB)
     elif event == "-MODEL-" and modelBool:     # upon hitting step 2 'Launch' button
         data1 = np.ones(len(featuresA[0]))
@@ -127,7 +125,11 @@ while True:
         categories = pd.DataFrame(data3)
         predictors = pd.DataFrame(data5).transpose()
         predictors.columns = feature_names
-        cat_train, cat_test, pred_train, pred_test = train_test_split(categories, predictors, test_size=.2,
+        predictors_scaled = predictors.copy()
+        for i in feature_names:
+            predictors_scaled[i] = (predictors_scaled[i] - predictors_scaled[i].min()) / \
+                                        (predictors_scaled[i].max() - predictors_scaled[i].min())
+        cat_train, cat_test, pred_train, pred_test = train_test_split(categories, predictors_scaled, test_size=.2,
                                                                       random_state=25)
         for i in range(0, int(values["-MODELSNUM-"])):
             count = count + 1
@@ -138,7 +140,7 @@ while True:
                 sfs1 = SFS(model1, k_features=int(values["-FEATURESNUM-"]), forward=True,
                                                  floating=False, verbose=2, scoring='accuracy', cv=0)
                 pipe1 = make_pipeline(StandardScaler(), sfs1)
-                pipe1.fit(predictors, categories)
+                pipe1.fit(pred_train, cat_train)
             elif i == 1:
                 sfs2 = SFS(model2, k_features=int(values["-FEATURESNUM-"]), forward=True,
                                                  floating=False, verbose=2, scoring='accuracy', cv=5)
