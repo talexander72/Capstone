@@ -112,9 +112,9 @@ while True:
              [sg.Text(
                  'audio file. Things such as spectral energy, zero-crossing rate, center frequency, etc...')],
              [sg.Text(
-                 'are more meaningful than the raw pressure readings, and thus allows a for the training')],
+                 'are more meaningful than the raw audio, and thus allows for the training of a much more')],
              [sg.Text(
-                 'of a much more robust and accurate model')],
+                 'robust and accurate model')],
              [sg.Text('__'*46)]
              ]
         window3 = sg.Window("Education Page", layout3, finalize=True)
@@ -124,24 +124,28 @@ while True:
     elif event == "-HELP2-":
         layout4 = \
             [[sg.Text(
-                'Stage 1 encompasses data parsing and feature extraction:')],
+                'Stage 2 encompasses model training and sequential forward selection of features:')],
              [sg.Text(
-                'First, files are read in from a user-selected folder. Each file is saved as a list of numbers')],
+                'Using the formatted and normalized data from stage 1, multiple machine learning models are trained.')],
              [sg.Text(
-                'representing air pressure over time, with an accompanying sample rate for reconstruction')],
+                'This program supports 5 types of ML models: Logistic Regression, K Nearest Neighbor, Random Forest,')],
              [sg.Text(
-                'Machine learning models perform best when trained on consistently formatted data, so we split each')],
+                'Support Vector Machine, and Multilayer Perceptron. Each of these models interpret training data')],
              [sg.Text(
-                'variable-length file into many "chunks" of the same length prior to feature extraction.')],
+                'differently, and make their predictions accordingly.')],
              [sg.Text('__' * 46)],
              [sg.Text(
-                'Audio features extraction refers to the computation of meaningful information from a raw')],
+                'Sequential Forward Selection is used to determine which features are the best descriptors of the ')],
              [sg.Text(
-                'audio file. Things such as spectral energy, zero-crossing rate, center frequency, etc...')],
+                'dataset being analyzed. Up to a user-selected number, this stage computes the accuracy')],
              [sg.Text(
-                'are more meaningful than the raw pressure readings, and thus allows a for the training')],
+                'of each model with increasing amounts of training features (beginning with the most "important" one')],
              [sg.Text(
-                'of a much more robust and accurate model')],
+                'This optimization is important because having more data is not always better. This phenomena is')],
+             [sg.Text(
+                'called overfitting. Limiting the number of features used to train your model will improve processing')],
+             [sg.Text(
+                'speed as well as accuracy in many cases')],
              [sg.Text('__' * 46)]]
         window4 = sg.Window("Education Page", layout4, finalize=True)
         if event == sg.WIN_CLOSED:
