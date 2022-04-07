@@ -32,6 +32,7 @@ fList = ['SpectralCentroid', 'SpectralCrestFactor', 'SpectralDecrease', 'Spectra
 
 fList1 = ['SpectralMfccs']
 
+
 def features(feature, file, f_s):
     [vsf, t] = pyACA.computeFeature(feature, file, f_s, iBlockLength=chunkSize, iHopLength=hopSize)
     return vsf
@@ -56,19 +57,17 @@ layout = \
      [sg.Text('How many features would you like to extract?'), sg.Slider(range=(1, 18), key="-FEATURESNUM-",
                                                                       default_value=9, size=(40,28),
                                                                       orientation='horizontal')],
-     [sg.Text('    (Step 1 of 2) Launch Feature Extraction:'), sg.Button('LAUNCH', key="-FEAT-"),
-                                                               sg.Button('CANCEL', key="-FEATX-"),
+     [sg.Text('    (Step 1 of 2) Parse Data:'), sg.Button('LAUNCH', key="-FEAT-"),
                                                                sg.Button('HELP', key="-HELP1-")],
      [sg.Text('__'*46)],
      [sg.Text('Model Training: multiple machine learning models which each have their own "flavor" of prediction')],
-     [sg.Text('How many models would you like to train?'), sg.Slider(range=(1, 5),
-                                                                     key="-MODELSNUM-", default_value=4,
-                                                                     size=(40, 28), orientation='horizontal')],
      [sg.Text('How many features would you like to test?'), sg.Slider(range=(1, 18),
                                                                      key="-TESTNUM-", default_value=9,
                                                                      size=(40, 28), orientation='horizontal')],
-     [sg.Text('    (Step 2 of 2) Launch Model Training:     '), sg.Button('LAUNCH', key="-MODEL-"),
-                                                                sg.Button('CANCEL', key="-MODELX-"),
+     [sg.Text('Model Selection:')], [sg.Checkbox('Logistic Regression', default=True, key="-LR-")],
+      [sg.Checkbox('KNN', default=True, key="-KNN-")], [sg.Checkbox('Random Forest', default=True, key="-FOREST-")],
+      [sg.Checkbox('SVM', default=True, key="-SVM-")], [sg.Checkbox('MLP', default=True, key="-MLP-")],
+     [sg.Text('    (Step 2 of 2) Train Models:'), sg.Button('LAUNCH', key="-MODEL-"),
                                                                 sg.Button('HELP', key="-HELP2-")],
      [sg.Text('__'*46)],
      [sg.Text('View Results: '), sg.Button('GO', key="-RESULTS-")]]
@@ -108,7 +107,7 @@ while True:
                  'variable-length file into many "chunks" of the same length prior to feature extraction.')],
              [sg.Text('__' * 46)],
              [sg.Text(
-                 'Audio features extraction refers to the computation of meaningful information from a raw')],
+                 'Audio feature extraction refers to the computation of meaningful information from a raw')],
              [sg.Text(
                  'audio file. Things such as spectral energy, zero-crossing rate, center frequency, etc...')],
              [sg.Text(
@@ -239,7 +238,7 @@ while True:
             event2, values2 = window2.read()
             if event2 == "Exit" or event2 == sg.WIN_CLOSED:
                 break
-    elif event == sg.WIN_CLOSED or event == "Exit" or event == '-FEATX-' or event == '-MODELX-':
+    elif event == sg.WIN_CLOSED or event == "Exit":
         break
 
 
