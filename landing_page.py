@@ -17,6 +17,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
+from sklearn.metrics import accuracy_score
 
 from itertools import combinations
 from sklearn.base import clone
@@ -52,18 +53,23 @@ layout = \
      [sg.Text('Enter an Overlap Ratio (percent):'), sg.Slider(range=(0, 99), key="-HOP-", default_value=50,
                                                               size=(40, 20), orientation='horizontal')],
      [sg.Text('Feature Extraction: Audio features are computed and averaged across chunks')],
-     [sg.Text('How many features would you like to test?'), sg.Slider(range=(1,18), key="-FEATURESNUM-",
-                                                                      default_value=18, size=(40,28),
+     [sg.Text('How many features would you like to extract?'), sg.Slider(range=(1, 18), key="-FEATURESNUM-",
+                                                                      default_value=9, size=(40,28),
                                                                       orientation='horizontal')],
      [sg.Text('    (Step 1 of 2) Launch Feature Extraction:'), sg.Button('LAUNCH', key="-FEAT-"),
-                                                               sg.Button('Cancel', key="-FEATX-")],
+                                                               sg.Button('CANCEL', key="-FEATX-"),
+                                                               sg.Button('HELP', key="-HELP1-")],
      [sg.Text('__'*46)],
      [sg.Text('Model Training: multiple machine learning models which each have their own "flavor" of prediction')],
-     [sg.Text('How many models would you like to train?'), sg.Slider(range=(1, 4),
+     [sg.Text('How many models would you like to train?'), sg.Slider(range=(1, 5),
                                                                      key="-MODELSNUM-", default_value=4,
-                                                                     size=(40,28),orientation='horizontal')],
+                                                                     size=(40, 28), orientation='horizontal')],
+     [sg.Text('How many features would you like to test?'), sg.Slider(range=(1, 18),
+                                                                     key="-TESTNUM-", default_value=9,
+                                                                     size=(40, 28), orientation='horizontal')],
      [sg.Text('    (Step 2 of 2) Launch Model Training:     '), sg.Button('LAUNCH', key="-MODEL-"),
-                                                                sg.Button('Cancel', key="-MODELX-")],
+                                                                sg.Button('CANCEL', key="-MODELX-"),
+                                                                sg.Button('HELP', key="-HELP2-")],
      [sg.Text('__'*46)],
      [sg.Text('View Results: '), sg.Button('GO', key="-RESULTS-")]]
 
@@ -77,6 +83,8 @@ layout2 = \
 
 window = sg.Window('Setup and Training', layout, element_justification='l')
 window2 = sg.Window('Results and Code', layout2, modal=True)
+window3 = None
+window4 = None
 
 modelBool = False       # deactivating buttons that aren't supposed to be used yet
 resultsBool = False     # initializing results window in the background
@@ -86,7 +94,60 @@ count = 0               # initializing tracker for window 2 launch event
 # launching landing page:
 while True:
     event, values = window.read()
-    if event == "-FEAT-":       # upon hitting step 1 'Launch' button
+    if event == "-HELP1-":        # launching first stage help button
+        layout3 = \
+            [[sg.Text(
+                'Stage 1 encompasses data parsing and feature extraction:')],
+             [sg.Text(
+                 'First, files are read in from a user-selected folder. Each file is saved as a list of numbers')],
+             [sg.Text(
+                 'representing air pressure over time, with an accompanying sample rate for reconstruction')],
+             [sg.Text(
+                 'Machine learning models perform best when trained on consistently formatted data, so we split each')],
+             [sg.Text(
+                 'variable-length file into many "chunks" of the same length prior to feature extraction.')],
+             [sg.Text('__' * 46)],
+             [sg.Text(
+                 'Audio features extraction refers to the computation of meaningful information from a raw')],
+             [sg.Text(
+                 'audio file. Things such as spectral energy, zero-crossing rate, center frequency, etc...')],
+             [sg.Text(
+                 'are more meaningful than the raw pressure readings, and thus allows a for the training')],
+             [sg.Text(
+                 'of a much more robust and accurate model')],
+             [sg.Text('__'*46)]
+             ]
+        window3 = sg.Window("Education Page", layout3, finalize=True)
+        if event == sg.WIN_CLOSED:
+            window3.close()
+
+    elif event == "-HELP2-":
+        layout4 = \
+            [[sg.Text(
+                'Stage 1 encompasses data parsing and feature extraction:')],
+             [sg.Text(
+                'First, files are read in from a user-selected folder. Each file is saved as a list of numbers')],
+             [sg.Text(
+                'representing air pressure over time, with an accompanying sample rate for reconstruction')],
+             [sg.Text(
+                'Machine learning models perform best when trained on consistently formatted data, so we split each')],
+             [sg.Text(
+                'variable-length file into many "chunks" of the same length prior to feature extraction.')],
+             [sg.Text('__' * 46)],
+             [sg.Text(
+                'Audio features extraction refers to the computation of meaningful information from a raw')],
+             [sg.Text(
+                'audio file. Things such as spectral energy, zero-crossing rate, center frequency, etc...')],
+             [sg.Text(
+                'are more meaningful than the raw pressure readings, and thus allows a for the training')],
+             [sg.Text(
+                'of a much more robust and accurate model')],
+             [sg.Text('__' * 46)]]
+        window4 = sg.Window("Education Page", layout4, finalize=True)
+        if event == sg.WIN_CLOSED:
+            window4.close()
+
+    elif event == "-FEAT-":       # Launch Data Parsing
         modelBool = True
         chunkSize = values["-CHUNK-"]
         hopSize = (1 - (values["-HOP-"])/100) * chunkSize
@@ -109,12 +170,11 @@ while True:
         for f in range(int(values["-FEATURESNUM-"])):
             feature_names.append(fList[f])
             current_featureA = features(fList[f], x2, fs)
-            #current_featureA[:] = current_featureA[:] / max(current_featureA)
             featuresA.append(current_featureA)
             current_featureB = features(fList[f], x, fs)
-            #current_featureB[:] = current_featureB[:] / max(current_featureB)
             featuresB.append(current_featureB)
-    elif event == "-MODEL-" and modelBool:     # upon hitting step 2 'Launch' button
+
+    elif event == "-MODEL-" and modelBool:          # Launch Model Training / Testing
         data1 = np.ones(len(featuresA[0]))
         data2 = np.zeros(len(featuresB[0]))
         data3 = np.concatenate((data1, data2))
@@ -137,28 +197,34 @@ while True:
                                               'step 2 of 2: testing model performance'):
                 break
             if i == 0:
-                sfs1 = SFS(model1, k_features=int(values["-FEATURESNUM-"]), forward=True,
-                                                 floating=False, verbose=2, scoring='accuracy', cv=0)
+                sfs1 = SFS(model1, k_features=int(values["-TESTNUM-"]), forward=True,
+                                                 floating=False, scoring='accuracy', cv=0)
                 pipe1 = make_pipeline(StandardScaler(), sfs1)
                 pipe1.fit(pred_train, cat_train)
+                pred_train_sfs1 = sfs1.transform(pred_train)
+                pred_test_sfs1 = sfs1.transform(pred_test)
+                model1.fit(pred_train_sfs1, cat_train)
+                predictions1 = model1.predict(pred_test_sfs1)
+                score = accuracy_score(cat_test, predictions1)
             elif i == 1:
-                sfs2 = SFS(model2, k_features=int(values["-FEATURESNUM-"]), forward=True,
+                sfs2 = SFS(model2, k_features=int(values["-TESTNUM-"]), forward=True,
                                                  floating=False, verbose=2, scoring='accuracy', cv=5)
                 pipe2 = make_pipeline(StandardScaler(), sfs2)
                 pipe2.fit(pred_train, cat_train)
             elif i == 2:
-                sfs3 = SFS(model3, k_features=int(values["-FEATURESNUM-"]), forward=True,
+                sfs3 = SFS(model3, k_features=int(values["-TESTNUM-"]), forward=True,
                                                  floating=False, verbose=2, scoring='accuracy', cv=5)
                 pipe3 = make_pipeline(StandardScaler(), sfs3)
                 pipe3.fit(pred_train, cat_train)
             elif i == 3:
-                sfs4 = SFS(model4, k_features=int(values["-FEATURESNUM-"]), forward=True,
+                sfs4 = SFS(model4, k_features=int(values["-TESTNUM-"]), forward=True,
                                                  floating=False, verbose=2, scoring='accuracy', cv=5)
                 pipe4 = make_pipeline(StandardScaler(), sfs4)
                 pipe4.fit(pred_train, cat_train)
             if count == int(values["-MODELSNUM-"]):
                 resultsBool = True
-    elif event == "-RESULTS-" and resultsBool:      # launch results window
+
+    elif event == "-RESULTS-" and resultsBool:          # launch results window
         window.close()
         plot_sfs(sfs1.get_metric_dict(), kind='std_err');
         plt.ylim([0.8, 1])
