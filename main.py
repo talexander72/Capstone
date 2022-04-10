@@ -31,10 +31,52 @@ def main():
 
     feature_list = ['SpectralCentroid', 'SpectralCrestFactor', 'SpectralDecrease', 'SpectralFlatness', 'SpectralFlux',
                     'SpectralRolloff', 'SpectralSkewness', 'SpectralSpread', 'SpectralTonalPowerRatio']
+    feature_names = feature_list
 
-    def extractFeatures(feature, file, f_s):
-        [vsf, t] = pyACA.computeFeature(feature, file, f_s, iBlockLength=chunk_size, iHopLength=hop_size)
-        return vsf
+    def readData():
+        chunk = values['-CHUNK-']
+        hop = (1 - (values['-HOP-']) / 100) * chunk
+
+        class_names = os.listdir(values['-IN-'])
+        filenames_1 = os.listdir(values['-IN-'] + '/' + class_names[1])
+        filenames_2 = os.listdir(values['-IN-'] + '/' + class_names[2])
+        num_files = len(filenames_1) + len(filenames_2)
+        time_series_a = []
+        time_series_b = []
+
+        for i in range(num_files):  # step 1 progress bar
+            if not sg.one_line_progress_meter('Parsing Progress', i + 1, num_files, 'step 1 of 3: data parsing'):
+                break
+            if i < len(filenames_2):    # processing class A
+                [fs, x] = read(values['-IN-'] + '/' + class_names[1] + '/' + filenames_1[i])
+                x = x[:, 0]  # grabbing only channel 1
+                time_series_a.extend(x)
+            else:   # processing class B
+                [fs, x2] = read(values['-IN-'] + '/' + class_names[2] + '/' + filenames_2[i - len(filenames_1)])
+                x2 = x2[:, 0]  # grabbing only channel 1
+                time_series_b.extend(x2)
+
+        return chunk, hop, time_series_a, time_series_b, fs
+
+    def getFeatures(time_series_a, time_series_b, chunk, hop, fs):
+
+        def helpGetFeatures(feature, file, f_s):
+            [vsf, t] = pyACA.computeFeature(feature, file, f_s, iBlockLength=chunk, iHopLength=hop)
+            return vsf
+        time_series_a = np.array(time_series_a)
+        time_series_b = np.array(time_series_b)
+        features_a = []
+        features_b = []
+        for f in range(len(feature_names)):
+            if not sg.one_line_progress_meter('Feature Progress', f + 1, len(feature_names),
+                                              'step 2 of 3: feature extraction'):
+                break
+            current_feature_a = helpGetFeatures(feature_list[f], time_series_a, fs)
+            features_a.append(current_feature_a)
+            current_feature_b = helpGetFeatures(feature_list[f], time_series_b, fs)
+            features_b.append(current_feature_b)
+
+        return features_a, features_b
 
     model1 = LogisticRegression(solver='lbfgs', max_iter=200)  # binary logistic regression
     model2 = svm.SVC()
@@ -56,14 +98,15 @@ def main():
 
          [sg.Text('Feature Extraction: Audio features are computed and averaged across chunks')],
 
-         [sg.Text('How many features would you like to extract?'), sg.Slider(range=(1, 18), key='-FEATURESNUM-',
-                                                                             default_value=9, size=(40,28),
-                                                                             orientation='horizontal')],
-
-         [sg.Text('    (Step 1 of 2) Parse Data:'), sg.Button('LAUNCH', key='-FEAT-'),
+         [sg.Text('    (Step 1 of 3) Parse Data:'), sg.Button('LAUNCH', key='-PARSE-'),
           sg.Button('HELP', key='-HELP1-')],
 
          [sg.Text('__'*46)],
+
+         [sg.Text('    (Step 2 of 3) Extract Features:'), sg.Button('LAUNCH', key='-FEAT-'),
+          sg.Button('HELP', key='-HELP1-')],
+
+         [sg.Text('__' * 46)],
 
          [sg.Text('Model Training: multiple machine learning models which each have their own "flavor" of prediction')],
 
@@ -95,17 +138,14 @@ def main():
     help_window1 = None
     help_window2 = None
 
-    model_bool = False       # deactivating buttons that aren't supposed to be used yet
-    results_bool = False     # initializing results window in the background
+    model_bool = False      # deactivating buttons that aren't supposed to be used yet
+    results_bool = False    # initializing results window in the background
     count = 0               # initializing tracker for window 2 launch event
 
     # launching landing page:
     while True:
-
         event, values = setup_window.read()
-
-        if event == '-HELP1-':        # launching first stage help button
-
+        if event == '-HELP1-':  # launching help window for stage 1
             help_layout1 = \
                 [[sg.Text(
                     'Stage 1 encompasses data parsing and feature extraction:')],
@@ -133,8 +173,7 @@ def main():
             if event == sg.WIN_CLOSED:
                 help_window1.close()
 
-        elif event == '-HELP2-':
-
+        elif event == '-HELP2-':    # launch help window for stage 2
             help_layout2 = \
                 [[sg.Text(
                     'Stage 2 encompasses model training and sequential forward selection of features:')],
@@ -171,40 +210,12 @@ def main():
             if event == sg.WIN_CLOSED:
                 help_window2.close()
 
-        elif event == '-FEAT-':       # Launch Data Parsing
-
+        elif event == '-PARSE-':       # Launch Data Parsing
             model_bool = True
-            chunk_size = values['-CHUNK-']
-            hop_size = (1 - (values['-HOP-'])/100) * chunk_size
+            [chunk_size, hop_size, files_a, files_b, fs] = readData()
 
-            class_names = os.listdir(values['-IN-'])
-            filenames_1 = os.listdir(values['-IN-'] + '/' + class_names[1])
-            filenames_2 = os.listdir(values['-IN-'] + '/' + class_names[2])
-            num_files = len(filenames_1) + len(filenames_2)
-
-            features_a = []
-            features_b = []
-            feature_names = []
-
-            for i in range(num_files):  # step 1 progress bar
-
-                if not sg.one_line_progress_meter('Parsing Progress', i+1, num_files, 'step 1 of 2: data parsing'):
-                    break
-
-                if i < len(filenames_2):  # processing class A
-                    [fs, x] = read(values['-IN-'] + '/' + class_names[1] + '/' + filenames_1[i])
-                    x = x[:, 0]  # grabbing only channel 1
-
-                else:   # processing class B
-                    [fs, x2] = read(values['-IN-'] + '/' + class_names[2] + '/' + filenames_2[i - len(filenames_1)])
-                    x2 = x2[:, 0]  # grabbing only channel 1
-
-            for f in range(int(values['-FEATURESNUM-'])):
-                feature_names.append(feature_list[f])
-                current_feature_a = extractFeatures(feature_list[f], x, fs)
-                features_a.append(current_feature_a)
-                current_feature_b = extractFeatures(feature_list[f], x2, fs)
-                features_b.append(current_feature_b)
+        elif event == '-FEAT-':
+            [features_a, features_b] = getFeatures(files_a, files_b, chunk_size, hop_size, fs)
 
         elif event == '-MODEL-' and model_bool:          # Launch Model Training / Testing
 
