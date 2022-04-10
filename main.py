@@ -73,10 +73,10 @@ def main():
 
          [sg.Text('Model Selection:')],
          [sg.Checkbox('Logistic Regression', default=True, key='-LR-')],
-         [sg.Checkbox('KNN', default=True, key='-KNN-')],
+         [sg.Checkbox('K Nearest Neighbor', default=True, key='-KNN-')],
          [sg.Checkbox('Random Forest', default=True, key='-RF-')],
-         [sg.Checkbox('SVM', default=True, key='-SVM-')],
-         [sg.Checkbox('MLP', default=True, key='-MLP-')],
+         [sg.Checkbox('Support Vector Machine', default=True, key='-SVM-')],
+         [sg.Checkbox('Multi Layer Perceptron', default=True, key='-MLP-')],
 
          [sg.Text('    (Step 2 of 2) Train Models:'), sg.Button('LAUNCH', key='-MODEL-'),
           sg.Button('HELP', key='-HELP2-')],
