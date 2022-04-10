@@ -26,7 +26,6 @@ from sklearn.metrics import balanced_accuracy_score
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 from mlxtend.plotting import plot_sequential_feature_selection as plot_sfs
 
-test = 'test'
 
 def main():
 
