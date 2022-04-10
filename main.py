@@ -202,7 +202,7 @@ def main():
             for f in range(int(values['-FEATURESNUM-'])):
                 feature_names.append(feature_list[f])
                 current_feature_a = extractFeatures(feature_list[f], x, fs)
-                features_a.append(current_feature_b)
+                features_a.append(current_feature_a)
                 current_feature_b = extractFeatures(feature_list[f], x2, fs)
                 features_b.append(current_feature_b)
 
