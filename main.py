@@ -223,7 +223,7 @@ def main():
             data2 = np.zeros(len(features_b[0]))
             data3 = np.concatenate((data1, data2))
             data5 = []
-            for d in range(int(values['-FEATURESNUM-'])):
+            for d in range(len(feature_names)):
                 data4 = np.concatenate([features_a[d], features_b[d]])
                 data5.append(data4)
 
