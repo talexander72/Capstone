@@ -78,10 +78,61 @@ def main():
 
         return features_a, features_b
 
-    model1 = LogisticRegression(solver='lbfgs', max_iter=200)  # binary logistic regression
-    model2 = svm.SVC()
-    model3 = KNeighborsClassifier(n_neighbors=3)
-    model4 = RandomForestClassifier(max_depth=2, random_state=0)
+    def formatData():
+        data1 = np.ones(len(features_a[0]))
+        data2 = np.zeros(len(features_b[0]))
+        data3 = np.concatenate((data1, data2))
+        data5 = []
+        for d in range(len(feature_names)):
+            data4 = np.concatenate([features_a[d], features_b[d]])
+            data5.append(data4)
+
+        categories = pd.DataFrame(data3)
+        predictors = pd.DataFrame(data5).transpose()
+        predictors.columns = feature_names
+        predictors_scaled = predictors.copy()  # normalization of audio features
+        for i in feature_names:
+            predictors_scaled[i] = (predictors_scaled[i] - predictors_scaled[i].min()) / \
+                                   (predictors_scaled[i].max() - predictors_scaled[i].min())
+
+        cat_train, cat_test, pred_train, pred_test = train_test_split(categories, predictors_scaled, test_size=.2,
+                                                                      random_state=25)
+        return categories, predictors_scaled, cat_train, cat_test, pred_train, pred_test
+
+    def initializeModels():
+        model1 = LogisticRegression(solver='lbfgs', max_iter=200)  # binary logistic regression
+        model2 = svm.SVC()
+        model3 = KNeighborsClassifier(n_neighbors=3)
+        model4 = RandomForestClassifier(max_depth=2, random_state=0)
+        return model1, model2, model3, model4
+
+    def testModels():
+        if values['-LR-']:
+            sfs1 = SFS(model1, k_features=int(values["-TESTNUM-"]), forward=True,
+                       floating=False, scoring='accuracy', cv=0)
+            pipe1 = make_pipeline(StandardScaler(), sfs1)
+            pipe1.fit(pred_train, cat_train)
+            pred_train_sfs1 = sfs1.transform(pred_train)
+            pred_test_sfs1 = sfs1.transform(pred_test)
+            model1.fit(pred_train_sfs1, cat_train)
+            predictions1 = model1.predict(pred_test_sfs1)
+            score1 = accuracy_score(cat_test, predictions1)
+        if values['-SVM-']:
+            sfs2 = SFS(model2, k_features=int(values["-TESTNUM-"]), forward=True,
+                       floating=False, verbose=2, scoring='accuracy', cv=5)
+            pipe2 = make_pipeline(StandardScaler(), sfs2)
+            pipe2.fit(pred_train, cat_train)
+        if values['-KNN-']:
+            sfs3 = SFS(model3, k_features=int(values["-TESTNUM-"]), forward=True,
+                       floating=False, verbose=2, scoring='accuracy', cv=5)
+            pipe3 = make_pipeline(StandardScaler(), sfs3)
+            pipe3.fit(pred_train, cat_train)
+        if values['-RF-']:
+            sfs4 = SFS(model4, k_features=int(values["-TESTNUM-"]), forward=True,
+                       floating=False, verbose=2, scoring='accuracy', cv=5)
+            pipe4 = make_pipeline(StandardScaler(), sfs4)
+            pipe4.fit(pred_train, cat_train)
+        return score1
 
     # main landing page layout
     sg.theme('Black')
@@ -138,6 +189,7 @@ def main():
     help_window1 = None
     help_window2 = None
 
+    feature_bool = False
     model_bool = False      # deactivating buttons that aren't supposed to be used yet
     results_bool = False    # initializing results window in the background
     count = 0               # initializing tracker for window 2 launch event
@@ -211,66 +263,22 @@ def main():
                 help_window2.close()
 
         elif event == '-PARSE-':       # Launch Data Parsing
-            model_bool = True
+            feature_bool = True
             [chunk_size, hop_size, files_a, files_b, fs] = readData()
 
-        elif event == '-FEAT-':
+        elif event == '-FEAT-' and feature_bool:    # Launch Feature Extraction
+            model_bool = True
             [features_a, features_b] = getFeatures(files_a, files_b, chunk_size, hop_size, fs)
 
         elif event == '-MODEL-' and model_bool:          # Launch Model Training / Testing
-
-            data1 = np.ones(len(features_a[0]))
-            data2 = np.zeros(len(features_b[0]))
-            data3 = np.concatenate((data1, data2))
-            data5 = []
-            for d in range(len(feature_names)):
-                data4 = np.concatenate([features_a[d], features_b[d]])
-                data5.append(data4)
-
-            categories = pd.DataFrame(data3)
-            predictors = pd.DataFrame(data5).transpose()
-            predictors.columns = feature_names
-
-            predictors_scaled = predictors.copy()  # normalization of audio features
-            for i in feature_names:
-                predictors_scaled[i] = (predictors_scaled[i] - predictors_scaled[i].min()) / \
-                                            (predictors_scaled[i].max() - predictors_scaled[i].min())
-
-            cat_train, cat_test, pred_train, pred_test = train_test_split(categories, predictors_scaled, test_size=.2,
-                                                                          random_state=25)
-
-            for i in range(0, int(values['-MODELSNUM-'])):  # THIS LOOP NEEDS TO BE REDONE **********************
+            [categories, predictors_scaled, cat_train, cat_test, pred_train, pred_test] = formatData()
+            [model1, model2, model3, model4] = initializeModels()
+            [score1] = testModels()
+            for i in range(0, 4):  # THIS LOOP NEEDS TO BE REDONE **********************
                 count = count + 1
-
                 if not sg.one_line_progress_meter('Model Evaluation Progress', i+1, int(values["-MODELSNUM-"]),
-                                                  'step 2 of 2: testing model performance'):
+                                                  'step 3 of 3: testing model performance'):
                     break
-
-                if i == 0:
-                    sfs1 = SFS(model1, k_features=int(values["-TESTNUM-"]), forward=True,
-                                                     floating=False, scoring='accuracy', cv=0)
-                    pipe1 = make_pipeline(StandardScaler(), sfs1)
-                    pipe1.fit(pred_train, cat_train)
-                    pred_train_sfs1 = sfs1.transform(pred_train)
-                    pred_test_sfs1 = sfs1.transform(pred_test)
-                    model1.fit(pred_train_sfs1, cat_train)
-                    predictions1 = model1.predict(pred_test_sfs1)
-                    score = accuracy_score(cat_test, predictions1)
-                elif i == 1:
-                    sfs2 = SFS(model2, k_features=int(values["-TESTNUM-"]), forward=True,
-                                                     floating=False, verbose=2, scoring='accuracy', cv=5)
-                    pipe2 = make_pipeline(StandardScaler(), sfs2)
-                    pipe2.fit(pred_train, cat_train)
-                elif i == 2:
-                    sfs3 = SFS(model3, k_features=int(values["-TESTNUM-"]), forward=True,
-                                                     floating=False, verbose=2, scoring='accuracy', cv=5)
-                    pipe3 = make_pipeline(StandardScaler(), sfs3)
-                    pipe3.fit(pred_train, cat_train)
-                elif i == 3:
-                    sfs4 = SFS(model4, k_features=int(values["-TESTNUM-"]), forward=True,
-                                                     floating=False, verbose=2, scoring='accuracy', cv=5)
-                    pipe4 = make_pipeline(StandardScaler(), sfs4)
-                    pipe4.fit(pred_train, cat_train)
                 if count == int(values["-MODELSNUM-"]):
                     results_bool = True
 
