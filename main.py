@@ -147,7 +147,7 @@ def main():
             model4.fit(pred_train_sfs4, cat_train)
             predictions4 = model4.predict(pred_test_sfs4)
             score4 = accuracy_score(cat_test, predictions4)
-        return score1
+        return score1, score2, score3, score4
 
     # main landing page layout
     sg.theme('Black')
