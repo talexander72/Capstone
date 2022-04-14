@@ -122,16 +122,31 @@ def main():
                        floating=False, verbose=2, scoring='accuracy', cv=5)
             pipe2 = make_pipeline(StandardScaler(), sfs2)
             pipe2.fit(pred_train, cat_train)
+            pred_train_sfs2 = sfs2.transform(pred_train)
+            pred_test_sfs2 = sfs2.transform(pred_test)
+            model2.fit(pred_train_sfs2, cat_train)
+            predictions2 = model2.predict(pred_test_sfs2)
+            score2 = accuracy_score(cat_test, predictions2)
         if values['-KNN-']:
             sfs3 = SFS(model3, k_features=int(values["-TESTNUM-"]), forward=True,
                        floating=False, verbose=2, scoring='accuracy', cv=5)
             pipe3 = make_pipeline(StandardScaler(), sfs3)
             pipe3.fit(pred_train, cat_train)
+            pred_train_sfs3 = sfs3.transform(pred_train)
+            pred_test_sfs3 = sfs3.transform(pred_test)
+            model3.fit(pred_train_sfs3, cat_train)
+            predictions3 = model3.predict(pred_test_sfs3)
+            score3 = accuracy_score(cat_test, predictions3)
         if values['-RF-']:
             sfs4 = SFS(model4, k_features=int(values["-TESTNUM-"]), forward=True,
                        floating=False, verbose=2, scoring='accuracy', cv=5)
             pipe4 = make_pipeline(StandardScaler(), sfs4)
             pipe4.fit(pred_train, cat_train)
+            pred_train_sfs4 = sfs4.transform(pred_train)
+            pred_test_sfs4 = sfs4.transform(pred_test)
+            model4.fit(pred_train_sfs4, cat_train)
+            predictions4 = model4.predict(pred_test_sfs4)
+            score4 = accuracy_score(cat_test, predictions4)
         return score1
 
     # main landing page layout
@@ -155,7 +170,7 @@ def main():
          [sg.Text('__'*46)],
 
          [sg.Text('    (Step 2 of 3) Extract Features:'), sg.Button('LAUNCH', key='-FEAT-'),
-          sg.Button('HELP', key='-HELP1-')],
+          sg.Button('HELP', key='-HELP2-')],
 
          [sg.Text('__' * 46)],
 
@@ -172,7 +187,7 @@ def main():
          [sg.Checkbox('Support Vector Machine', default=True, key='-SVM-')],
          [sg.Checkbox('Multi Layer Perceptron', default=True, key='-MLP-')],
 
-         [sg.Text('    (Step 2 of 2) Train Models:'), sg.Button('LAUNCH', key='-MODEL-'),
+         [sg.Text('    (Step 3 of 3) Train Models:'), sg.Button('LAUNCH', key='-MODEL-'),
           sg.Button('HELP', key='-HELP2-')],
 
          [sg.Text('__'*46)],
@@ -273,12 +288,9 @@ def main():
         elif event == '-MODEL-' and model_bool:          # Launch Model Training / Testing
             [categories, predictors_scaled, cat_train, cat_test, pred_train, pred_test] = formatData()
             [model1, model2, model3, model4] = initializeModels()
-            [score1] = testModels()
+            [score1, score2, score3, score4] = testModels()
             for i in range(0, 4):  # THIS LOOP NEEDS TO BE REDONE **********************
                 count = count + 1
-                if not sg.one_line_progress_meter('Model Evaluation Progress', i+1, int(values["-MODELSNUM-"]),
-                                                  'step 3 of 3: testing model performance'):
-                    break
                 if count == int(values["-MODELSNUM-"]):
                     results_bool = True
 
