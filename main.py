@@ -195,7 +195,8 @@ def main():
     # main landing page layout
     sg.theme('Black')
     layout = \
-        [[sg.Text('Path to Folder:'), sg.Input(key='-IN-', change_submits=True), sg.FolderBrowse(key='-IN-')],
+        [[sg.Text('Path to Folder:'), sg.Input(key='-IN-', change_submits=True), sg.FolderBrowse(key='-IN-'),
+          sg.Button('HELP', key='-UPLOAD_HELP-')],
 
          [sg.Text('__'*46)],
 
@@ -246,6 +247,7 @@ def main():
     results_window = sg.Window('Results and Code Generation', layout2, modal=True)
     help_window1 = None
     help_window2 = None
+    upload_help_window = None
 
     feature_bool = False
     model_bool = False      # deactivating buttons that aren't supposed to be used yet
@@ -320,6 +322,18 @@ def main():
             if event == sg.WIN_CLOSED:
                 help_window2.close()
 
+        elif event == '-UPLOAD_HELP-':
+            upload_help_layout = \
+                [[sg.Text(
+                    'Upload the path to your dataset:')],
+                 [sg.Text(
+                    'Please ensure your dataset is in a folder containing folders for each target class.')],
+                 [sg.Text(
+                    'Please ensure that each subclass folder contains only .wav files of the same sampling rate')]
+                 ]
+            upload_help_window = sg.Window('Dataset Upload Help', upload_help_layout, finalize=True)
+            if event == sg.WIN_CLOSED:
+                upload_help_window.close()
         elif event == '-PARSE-':       # Launch Data Parsing
             feature_bool = True
             [chunk_size, hop_size, files_a, files_b, fs] = readData()
