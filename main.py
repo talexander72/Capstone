@@ -47,7 +47,7 @@ def main():
         for i in range(num_files):  # step 1 progress bar
             if not sg.one_line_progress_meter('Parsing Progress', i + 1, num_files, 'step 1 of 3: data parsing'):
                 break
-            if i < len(filenames_2):    # processing class A
+            if i < len(filenames_1):    # processing class A
                 [fs, x] = read(values['-IN-'] + '/' + class_names[1] + '/' + filenames_1[i])
                 x = x[:, 0]  # grabbing only channel 1
                 time_series_a.extend(x)
@@ -95,21 +95,25 @@ def main():
             predictors_scaled[i] = (predictors_scaled[i] - predictors_scaled[i].min()) / \
                                    (predictors_scaled[i].max() - predictors_scaled[i].min())
 
-        cat_train, cat_test, pred_train, pred_test = train_test_split(categories, predictors_scaled, test_size=.2,
-                                                                      random_state=25)
+        cat_train, cat_test, pred_train, pred_test = train_test_split(categories, predictors_scaled,
+                                                                      test_size=.2, random_state=25)
         return categories, predictors_scaled, cat_train, cat_test, pred_train, pred_test
 
     def initializeModels():
-        model1 = LogisticRegression(solver='lbfgs', max_iter=200)  # binary logistic regression
-        model2 = svm.SVC()
-        model3 = KNeighborsClassifier(n_neighbors=3)
-        model4 = RandomForestClassifier(max_depth=2, random_state=0)
-        return model1, model2, model3, model4
+        logistic_regression = LogisticRegression(solver='lbfgs', max_iter=200)  # binary logistic regression
+        support_vector_machine = svm.SVC()
+        k_nearest_neighbor = KNeighborsClassifier(n_neighbors=3)
+        random_forest = RandomForestClassifier(max_depth=2, random_state=0)
+        return logistic_regression, support_vector_machine, k_nearest_neighbor, random_forest
 
     def testModels():
+        score1 = 0
+        score2 = 0
+        score3 = 0
+        score4 = 0
         if values['-LR-']:
             sfs1 = SFS(model1, k_features=int(values["-TESTNUM-"]), forward=True,
-                       floating=False, scoring='accuracy', cv=0)
+                       floating=False, scoring='accuracy')
             pipe1 = make_pipeline(StandardScaler(), sfs1)
             pipe1.fit(pred_train, cat_train)
             pred_train_sfs1 = sfs1.transform(pred_train)
@@ -128,15 +132,13 @@ def main():
             predictions2 = model2.predict(pred_test_sfs2)
             score2 = accuracy_score(cat_test, predictions2)
         if values['-KNN-']:
-            sfs3 = SFS(model3, k_features=int(values["-TESTNUM-"]), forward=True,
-                       floating=False, verbose=2, scoring='accuracy', cv=5)
-            pipe3 = make_pipeline(StandardScaler(), sfs3)
-            pipe3.fit(pred_train, cat_train)
-            pred_train_sfs3 = sfs3.transform(pred_train)
-            pred_test_sfs3 = sfs3.transform(pred_test)
-            model3.fit(pred_train_sfs3, cat_train)
-            predictions3 = model3.predict(pred_test_sfs3)
-            score3 = accuracy_score(cat_test, predictions3)
+            sfs3 = SFS(model3,
+                       k_features=int(values["-TESTNUM-"]), forward=True, floating=False,
+                       verbose=2, scoring='accuracy', cv=0)
+            sfs3 = sfs3.fit(pred_train, cat_train)
+            #model3.fit(pred_train_sfs3, cat_train)
+            #predictions3 = model3.predict(pred_test_sfs3)
+            #score3 = accuracy_score(cat_test, predictions3)
         if values['-RF-']:
             sfs4 = SFS(model4, k_features=int(values["-TESTNUM-"]), forward=True,
                        floating=False, verbose=2, scoring='accuracy', cv=5)
@@ -147,7 +149,7 @@ def main():
             model4.fit(pred_train_sfs4, cat_train)
             predictions4 = model4.predict(pred_test_sfs4)
             score4 = accuracy_score(cat_test, predictions4)
-        return score1, score2, score3, score4
+        return score1, score2, score3, score4, sfs3
 
     # main landing page layout
     sg.theme('Black')
@@ -288,15 +290,12 @@ def main():
         elif event == '-MODEL-' and model_bool:          # Launch Model Training / Testing
             [categories, predictors_scaled, cat_train, cat_test, pred_train, pred_test] = formatData()
             [model1, model2, model3, model4] = initializeModels()
-            [score1, score2, score3, score4] = testModels()
-            for i in range(0, 4):  # THIS LOOP NEEDS TO BE REDONE **********************
-                count = count + 1
-                if count == int(values["-MODELSNUM-"]):
-                    results_bool = True
+            [score1, score2, score3, score4, sfs3] = testModels()
+            results_bool = True
 
         elif event == "-RESULTS-" and results_bool:          # launch results window
             setup_window.close()
-            plot_sfs(sfs1.get_metric_dict(), kind='std_err');
+            plot_sfs(sfs3.get_metric_dict(), kind='std_err');
             plt.ylim([0.8, 1])
             plt.title('Sequential Forward Selection (w. StdDev)')
             plt.grid()
