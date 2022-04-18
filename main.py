@@ -112,32 +112,40 @@ def main():
         score3 = 0
         score4 = 0
         if values['-LR-']:
-            sfs1 = SFS(model1, k_features=int(values["-TESTNUM-"]), forward=True,
-                       floating=False, scoring='accuracy')
-            pipe1 = make_pipeline(StandardScaler(), sfs1)
-            pipe1.fit(pred_train, cat_train)
-            pred_train_sfs1 = sfs1.transform(pred_train)
-            pred_test_sfs1 = sfs1.transform(pred_test)
-            model1.fit(pred_train_sfs1, cat_train)
-            predictions1 = model1.predict(pred_test_sfs1)
-            score1 = accuracy_score(cat_test, predictions1)
+            sfs1 = SFS(model1,
+                       k_features=int(values['-TESTNUM-']), forward=True, floating=False,
+                       verbose=2, scoring='accuracy', cv=0)
+            sfs1 = sfs1.fit(pred_train, cat_train)
+            score1 = []
+            for p in range(1, int(values["-TESTNUM-"])):
+                current_feature_set_names1 = np.array(sfs1.subsets_[p]['feature_names'])
+                pred_train_sfs1 = pred_train[current_feature_set_names1]
+                pred_test_sfs1 = pred_test[current_feature_set_names1]
+                model1.fit(pred_train_sfs1, cat_train)
+                current_predictions1 = model1.predict(pred_test_sfs1)
+                current_scores1 = accuracy_score(cat_test, current_predictions1)
+                score1.append(current_scores1)
         if values['-SVM-']:
-            sfs2 = SFS(model2, k_features=int(values["-TESTNUM-"]), forward=True,
-                       floating=False, verbose=2, scoring='accuracy', cv=5)
-            pipe2 = make_pipeline(StandardScaler(), sfs2)
-            pipe2.fit(pred_train, cat_train)
-            pred_train_sfs2 = sfs2.transform(pred_train)
-            pred_test_sfs2 = sfs2.transform(pred_test)
-            model2.fit(pred_train_sfs2, cat_train)
-            predictions2 = model2.predict(pred_test_sfs2)
-            score2 = accuracy_score(cat_test, predictions2)
+            sfs2 = SFS(model2,
+                       k_features=int(values['-TESTNUM-']), forward=True, floating=False,
+                       verbose=2, scoring='accuracy', cv=0)
+            sfs2 = sfs2.fit(pred_train, cat_train)
+            score2 = []
+            for p in range(1, int(values['-TESTNUM-'])):
+                current_feature_set_names2 = np.array(sfs2.subsets_[p]['feature_names'])
+                pred_train_sfs2 = pred_train[current_feature_set_names2]
+                pred_test_sfs2 = pred_test[current_feature_set_names2]
+                model2.fit(pred_train_sfs2, cat_train)
+                current_predictions2 = model2.predict(pred_test_sfs2)
+                current_scores2 = accuracy_score(cat_test, current_predictions2)
+                score2.append(current_scores2)
         if values['-KNN-']:
             sfs3 = SFS(model3,
                        k_features=int(values["-TESTNUM-"]), forward=True, floating=False,
                        verbose=2, scoring='accuracy', cv=0)
             sfs3 = sfs3.fit(pred_train, cat_train)
             score3 = []
-            for p in range(1, len(sfs3.k_feature_idx_)):
+            for p in range(1, int(values["-TESTNUM-"])):
                 current_feature_set_names = np.array(sfs3.subsets_[p]['feature_names'])
                 pred_train_sfs3 = pred_train[current_feature_set_names]
                 pred_test_sfs3 = pred_test[current_feature_set_names]
@@ -146,16 +154,19 @@ def main():
                 current_scores3 = accuracy_score(cat_test, current_predictions3)
                 score3.append(current_scores3)
         if values['-RF-']:
-            sfs4 = SFS(model4, k_features=int(values["-TESTNUM-"]), forward=True,
-                       floating=False, verbose=2, scoring='accuracy', cv=5)
-            pipe4 = make_pipeline(StandardScaler(), sfs4)
-            pipe4.fit(pred_train, cat_train)
-            pred_train_sfs4 = sfs4.transform(pred_train)
-            pred_test_sfs4 = sfs4.transform(pred_test)
-            model4.fit(pred_train_sfs4, cat_train)
-            predictions4 = model4.predict(pred_test_sfs4)
-            score4 = accuracy_score(cat_test, predictions4)
-        return score1, score2, score3, score4, sfs3
+            sfs4 = SFS(model4, k_features=int(values['-TESTNUM-']), forward=True, floating=False,
+                       verbose=2, scoring='accuracy', cv=0)
+            sfs4 = sfs4.fit(pred_train, cat_train)
+            score4 = []
+            for p in range(1, int(values['-TESTNUM-'])):
+                current_feature_set_names4 = np.array(sfs4.subsets_[p]['feature_names'])
+                pred_train_sfs4 = pred_train[current_feature_set_names4]
+                pred_test_sfs4 = pred_test[current_feature_set_names4]
+                model4.fit(pred_train_sfs4, cat_train)
+                current_predictions4 = model4.predict(pred_test_sfs4)
+                current_scores4 = accuracy_score(cat_test, current_predictions4)
+                score4.append(current_scores4)
+        return score1, score2, score3, score4, sfs1, sfs2, sfs3, sfs4
 
     # main landing page layout
     sg.theme('Black')
@@ -296,15 +307,14 @@ def main():
         elif event == '-MODEL-' and model_bool:          # Launch Model Training / Testing
             [categories, predictors_scaled, cat_train, cat_test, pred_train, pred_test] = formatData()
             [model1, model2, model3, model4] = initializeModels()
-            [score1, score2, score3, score4, sfs3] = testModels()
-            print(score3)
+            [score1, score2, score3, score4, sfs1, sfs2, sfs3, sfs4] = testModels()
             results_bool = True
 
         elif event == "-RESULTS-" and results_bool:          # launch results window
             setup_window.close()
             plot_sfs(sfs3.get_metric_dict(), kind='std_err');
             plt.ylim([0.8, 1])
-            plt.title('Sequential Forward Selection (w. StdDev)')
+            plt.title('Sequential Forward Selection Results')
             plt.grid()
             plt.show()
             while True:
