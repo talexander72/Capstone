@@ -97,6 +97,7 @@ def main():
 
         cat_train, cat_test, pred_train, pred_test = train_test_split(categories, predictors_scaled,
                                                                       test_size=.2, random_state=25)
+
         return categories, predictors_scaled, cat_train, cat_test, pred_train, pred_test
 
     def initializeModels():
@@ -104,34 +105,45 @@ def main():
         support_vector_machine = svm.SVC()
         k_nearest_neighbor = KNeighborsClassifier(n_neighbors=3)
         random_forest = RandomForestClassifier(max_depth=2, random_state=0)
+
         return logistic_regression, support_vector_machine, k_nearest_neighbor, random_forest
 
     def testModels():
-        score1 = 0
+        score1 = 0  # initial conditions
         score2 = 0
         score3 = 0
         score4 = 0
-        if values['-LR-']:
+
+        if values['-LR-']:  # if logistic regression model type is selected
             sfs1 = SFS(model1,
-                       k_features=int(values['-TESTNUM-']), forward=True, floating=False,
-                       verbose=2, scoring='accuracy', cv=0)
+                       k_features=int(values['-TESTNUM-']),
+                       forward=True,
+                       floating=False,
+                       verbose=2,
+                       scoring='accuracy',
+                       cv=0)
             sfs1 = sfs1.fit(pred_train, cat_train)
             score1 = []
-            for p in range(1, int(values["-TESTNUM-"])):
+            for p in range(1, int(values["-TESTNUM-"])):    # making predictions on each feature group of test set
                 current_feature_set_names1 = np.array(sfs1.subsets_[p]['feature_names'])
                 pred_train_sfs1 = pred_train[current_feature_set_names1]
                 pred_test_sfs1 = pred_test[current_feature_set_names1]
                 model1.fit(pred_train_sfs1, cat_train)
                 current_predictions1 = model1.predict(pred_test_sfs1)
-                current_scores1 = accuracy_score(cat_test, current_predictions1)
+                current_scores1 = accuracy_score(cat_test, current_predictions1)    # accuracy of current feature group
                 score1.append(current_scores1)
-        if values['-SVM-']:
+
+        if values['-SVM-']:     # if support vector machine model type is selected
             sfs2 = SFS(model2,
-                       k_features=int(values['-TESTNUM-']), forward=True, floating=False,
-                       verbose=2, scoring='accuracy', cv=0)
+                       k_features=int(values['-TESTNUM-']),
+                       forward=True,
+                       floating=False,
+                       verbose=2,
+                       scoring='accuracy',
+                       cv=0)
             sfs2 = sfs2.fit(pred_train, cat_train)
             score2 = []
-            for p in range(1, int(values['-TESTNUM-'])):
+            for p in range(1, int(values['-TESTNUM-'])):    # predictions for each feature set
                 current_feature_set_names2 = np.array(sfs2.subsets_[p]['feature_names'])
                 pred_train_sfs2 = pred_train[current_feature_set_names2]
                 pred_test_sfs2 = pred_test[current_feature_set_names2]
@@ -139,13 +151,18 @@ def main():
                 current_predictions2 = model2.predict(pred_test_sfs2)
                 current_scores2 = accuracy_score(cat_test, current_predictions2)
                 score2.append(current_scores2)
-        if values['-KNN-']:
+
+        if values['-KNN-']:     # if K Nearest Neighbor model type is selected
             sfs3 = SFS(model3,
-                       k_features=int(values["-TESTNUM-"]), forward=True, floating=False,
-                       verbose=2, scoring='accuracy', cv=0)
+                       k_features=int(values["-TESTNUM-"]),
+                       forward=True,
+                       floating=False,
+                       verbose=2,
+                       scoring='accuracy',
+                       cv=0)
             sfs3 = sfs3.fit(pred_train, cat_train)
             score3 = []
-            for p in range(1, int(values["-TESTNUM-"])):
+            for p in range(1, int(values["-TESTNUM-"])):    # predictions for each feature set
                 current_feature_set_names = np.array(sfs3.subsets_[p]['feature_names'])
                 pred_train_sfs3 = pred_train[current_feature_set_names]
                 pred_test_sfs3 = pred_test[current_feature_set_names]
@@ -153,12 +170,18 @@ def main():
                 current_predictions3 = model3.predict(pred_test_sfs3)
                 current_scores3 = accuracy_score(cat_test, current_predictions3)
                 score3.append(current_scores3)
-        if values['-RF-']:
-            sfs4 = SFS(model4, k_features=int(values['-TESTNUM-']), forward=True, floating=False,
-                       verbose=2, scoring='accuracy', cv=0)
+
+        if values['-RF-']:      # if Random Forest model type is selected
+            sfs4 = SFS(model4,
+                       k_features=int(values['-TESTNUM-']),
+                       forward=True,
+                       floating=False,
+                       verbose=2,
+                       scoring='accuracy',
+                       cv=0)
             sfs4 = sfs4.fit(pred_train, cat_train)
             score4 = []
-            for p in range(1, int(values['-TESTNUM-'])):
+            for p in range(1, int(values['-TESTNUM-'])):    # predictions for each feature set
                 current_feature_set_names4 = np.array(sfs4.subsets_[p]['feature_names'])
                 pred_train_sfs4 = pred_train[current_feature_set_names4]
                 pred_test_sfs4 = pred_test[current_feature_set_names4]
@@ -166,6 +189,7 @@ def main():
                 current_predictions4 = model4.predict(pred_test_sfs4)
                 current_scores4 = accuracy_score(cat_test, current_predictions4)
                 score4.append(current_scores4)
+
         return score1, score2, score3, score4, sfs1, sfs2, sfs3, sfs4
 
     # main landing page layout
