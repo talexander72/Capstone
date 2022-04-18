@@ -136,9 +136,15 @@ def main():
                        k_features=int(values["-TESTNUM-"]), forward=True, floating=False,
                        verbose=2, scoring='accuracy', cv=0)
             sfs3 = sfs3.fit(pred_train, cat_train)
-            #model3.fit(pred_train_sfs3, cat_train)
-            #predictions3 = model3.predict(pred_test_sfs3)
-            #score3 = accuracy_score(cat_test, predictions3)
+            score3 = []
+            for p in range(1, len(sfs3.k_feature_idx_)):
+                current_feature_set_names = np.array(sfs3.subsets_[p]['feature_names'])
+                pred_train_sfs3 = pred_train[current_feature_set_names]
+                pred_test_sfs3 = pred_test[current_feature_set_names]
+                model3.fit(pred_train_sfs3, cat_train)
+                current_predictions3 = model3.predict(pred_test_sfs3)
+                current_scores3 = accuracy_score(cat_test, current_predictions3)
+                score3.append(current_scores3)
         if values['-RF-']:
             sfs4 = SFS(model4, k_features=int(values["-TESTNUM-"]), forward=True,
                        floating=False, verbose=2, scoring='accuracy', cv=5)
@@ -291,6 +297,7 @@ def main():
             [categories, predictors_scaled, cat_train, cat_test, pred_train, pred_test] = formatData()
             [model1, model2, model3, model4] = initializeModels()
             [score1, score2, score3, score4, sfs3] = testModels()
+            print(score3)
             results_bool = True
 
         elif event == "-RESULTS-" and results_bool:          # launch results window
