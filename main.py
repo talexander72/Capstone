@@ -37,26 +37,41 @@ def main():
         chunk = values['-CHUNK-']
         hop = (1 - (values['-HOP-']) / 100) * chunk
 
-        class_names = os.listdir(values['-IN-'])
-        filenames_1 = os.listdir(values['-IN-'] + '/' + class_names[1])
-        filenames_2 = os.listdir(values['-IN-'] + '/' + class_names[2])
+        class_names = os.listdir(values['-PATH-'])
+        filenames_1 = os.listdir(values['-PATH-'] + '/' + class_names[1])
+        filenames_2 = os.listdir(values['-PATH-'] + '/' + class_names[2])
         num_files = len(filenames_1) + len(filenames_2)
+
         time_series_a = []
         time_series_b = []
+        bool_a = True
+        bool_b = True
 
         for i in range(num_files):  # step 1 progress bar
-            if not sg.one_line_progress_meter('Parsing Progress', i + 1, num_files, 'step 1 of 3: data parsing'):
+            if not sg.one_line_progress_meter('File Reading Progress', i + 1, num_files, 'step 1 of 3: file reading'):
                 break
             if i < len(filenames_1):    # processing class A
-                [fs, x] = read(values['-IN-'] + '/' + class_names[1] + '/' + filenames_1[i])
+                [current_fs1, x] = read(values['-PATH-'] + '/' + class_names[1] + '/' + filenames_1[i])
                 x = x[:, 0]  # grabbing only channel 1
-                time_series_a.extend(x)
+
+                if bool_a:
+                    sampling_rate_check_a = current_fs1
+                    bool_a = False
+                else:
+                    if sampling_rate_check_a != current_fs1:
+                        raise Exception('Please make sure all files have the same sampling rate')
+
             else:   # processing class B
-                [fs, x2] = read(values['-IN-'] + '/' + class_names[2] + '/' + filenames_2[i - len(filenames_1)])
+                [current_fs2, x2] = read(values['-PATH-'] + '/' + class_names[2] + '/' + filenames_2[i - len(filenames_1)])
                 x2 = x2[:, 0]  # grabbing only channel 1
                 time_series_b.extend(x2)
-
-        return chunk, hop, time_series_a, time_series_b, fs
+                if bool_b:
+                    sampling_rate_check_b = current_fs2
+                    bool_b = False
+                else:
+                    if sampling_rate_check_b != current_fs2:
+                        raise Exception('Please make sure all files have the same sampling rate')
+        return chunk, hop, time_series_a, time_series_b, sampling_rate_check_a, sampling_rate_check_b
 
     def getFeatures(time_series_a, time_series_b, chunk, hop, fs):
 
@@ -101,7 +116,7 @@ def main():
         return categories, predictors_scaled, cat_train, cat_test, pred_train, pred_test
 
     def initializeModels():
-        logistic_regression = LogisticRegression(solver='lbfgs', max_iter=200)  # binary logistic regression
+        logistic_regression = LogisticRegression(solver='lbfgs', max_iter=200)
         support_vector_machine = svm.SVC()
         k_nearest_neighbor = KNeighborsClassifier(n_neighbors=3)
         random_forest = RandomForestClassifier(max_depth=2, random_state=0)
@@ -195,7 +210,7 @@ def main():
     # main landing page layout
     sg.theme('Black')
     layout = \
-        [[sg.Text('Path to Folder:'), sg.Input(key='-IN-', change_submits=True), sg.FolderBrowse(key='-IN-'),
+        [[sg.Text('Path to Folder:'), sg.Input(key='-PATH-', change_submits=True), sg.FolderBrowse(key='-PATH-'),
           sg.Button('HELP', key='-UPLOAD_HELP-')],
 
          [sg.Text('__'*46)],
@@ -334,9 +349,10 @@ def main():
             upload_help_window = sg.Window('Dataset Upload Help', upload_help_layout, finalize=True)
             if event == sg.WIN_CLOSED:
                 upload_help_window.close()
+
         elif event == '-PARSE-':       # Launch Data Parsing
             feature_bool = True
-            [chunk_size, hop_size, files_a, files_b, fs] = readData()
+            [chunk_size, hop_size, files_a, files_b, fs1, fs2] = readData()
 
         elif event == '-FEAT-' and feature_bool:    # Launch Feature Extraction
             model_bool = True
