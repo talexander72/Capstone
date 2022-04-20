@@ -42,95 +42,99 @@ def main():
         filenames_2 = os.listdir(values['-PATH-'] + '/' + class_names[2])
         num_files = len(filenames_1) + len(filenames_2)
 
-        time_series_a = []
+        time_series_a = []  # initializing variables
         time_series_b = []
-        bool_a = True
-        bool_b = True
+        bool_check = True
 
         for i in range(num_files):  # step 1 progress bar
             if not sg.one_line_progress_meter('File Reading Progress', i + 1, num_files, 'step 1 of 3: file reading'):
                 break
+
             if i < len(filenames_1):    # processing class A
                 [current_fs1, x] = read(values['-PATH-'] + '/' + class_names[1] + '/' + filenames_1[i])
-                x = x[:, 0]  # grabbing only channel 1
-
-                if bool_a:
-                    sampling_rate_check_a = current_fs1
-                    bool_a = False
+                x = x[:, 0]  # grabbing only channel 1 of recording
+                time_series_a.extend(x)
+                if bool_check:  # grabbing the first returned sampling-rate to check subsequent values against
+                    sampling_rate_check = current_fs1
+                    bool_check = False
                 else:
-                    if sampling_rate_check_a != current_fs1:
-                        raise Exception('Please make sure all files have the same sampling rate')
+                    if sampling_rate_check != current_fs1:
+                        raise Warning('Please make sure all files have the same sampling rate')
 
             else:   # processing class B
                 [current_fs2, x2] = read(values['-PATH-'] + '/' + class_names[2] + '/' + filenames_2[i - len(filenames_1)])
                 x2 = x2[:, 0]  # grabbing only channel 1
                 time_series_b.extend(x2)
-                if bool_b:
-                    sampling_rate_check_b = current_fs2
-                    bool_b = False
-                else:
-                    if sampling_rate_check_b != current_fs2:
-                        raise Exception('Please make sure all files have the same sampling rate')
-        return chunk, hop, time_series_a, time_series_b, sampling_rate_check_a, sampling_rate_check_b
+                if sampling_rate_check != current_fs2:
+                    raise Warning('Please make sure all files have the same sampling rate')
 
-    def getFeatures(time_series_a, time_series_b, chunk, hop, fs):
+        return chunk, hop, time_series_a, time_series_b, sampling_rate_check
+
+    def getFeatures(time_series_a, time_series_b, chunk, hop, sampling_rate):
 
         def helpGetFeatures(feature, file, f_s):
             [vsf, t] = pyACA.computeFeature(feature, file, f_s, iBlockLength=chunk, iHopLength=hop)
             return vsf
-        time_series_a = np.array(time_series_a)
+
+        time_series_a = np.array(time_series_a)     # initializing variables
         time_series_b = np.array(time_series_b)
         features_a = []
         features_b = []
+
         for f in range(len(feature_names)):
-            if not sg.one_line_progress_meter('Feature Progress', f + 1, len(feature_names),
+            if not sg.one_line_progress_meter('Feature Extraction Progress', f + 1, len(feature_names),
                                               'step 2 of 3: feature extraction'):
                 break
-            current_feature_a = helpGetFeatures(feature_list[f], time_series_a, fs)
+            current_feature_a = helpGetFeatures(feature_list[f], time_series_a, sampling_rate)
             features_a.append(current_feature_a)
-            current_feature_b = helpGetFeatures(feature_list[f], time_series_b, fs)
+            current_feature_b = helpGetFeatures(feature_list[f], time_series_b, sampling_rate)
             features_b.append(current_feature_b)
 
         return features_a, features_b
 
     def formatData():
-        data1 = np.ones(len(features_a[0]))
-        data2 = np.zeros(len(features_b[0]))
+        data1 = np.ones(len(features_list_a[0]))
+        data2 = np.zeros(len(features_list_b[0]))
         data3 = np.concatenate((data1, data2))
         data5 = []
         for d in range(len(feature_names)):
-            data4 = np.concatenate([features_a[d], features_b[d]])
+            data4 = np.concatenate([features_list_a[d], features_list_b[d]])
             data5.append(data4)
 
         categories = pd.DataFrame(data3)
         predictors = pd.DataFrame(data5).transpose()
         predictors.columns = feature_names
+
         predictors_scaled = predictors.copy()  # normalization of audio features
         for i in feature_names:
             predictors_scaled[i] = (predictors_scaled[i] - predictors_scaled[i].min()) / \
                                    (predictors_scaled[i].max() - predictors_scaled[i].min())
 
-        cat_train, cat_test, pred_train, pred_test = train_test_split(categories, predictors_scaled,
-                                                                      test_size=.2, random_state=25)
+        training_categories, testing_categories, training_predictors, testing_predictors \
+            = train_test_split(categories, predictors_scaled, test_size=.2, random_state=25)
 
-        return categories, predictors_scaled, cat_train, cat_test, pred_train, pred_test
+        return training_categories, testing_categories, training_predictors, testing_predictors
 
     def initializeModels():
-        logistic_regression = LogisticRegression(solver='lbfgs', max_iter=200)
-        support_vector_machine = svm.SVC()
-        k_nearest_neighbor = KNeighborsClassifier(n_neighbors=3)
-        random_forest = RandomForestClassifier(max_depth=2, random_state=0)
+        model1 = LogisticRegression(solver='lbfgs', max_iter=200)
+        model2 = svm.SVC()
+        model3 = KNeighborsClassifier(n_neighbors=3)
+        model4 = RandomForestClassifier(max_depth=2, random_state=0)
 
-        return logistic_regression, support_vector_machine, k_nearest_neighbor, random_forest
+        return model1, model2, model3, model4
 
     def testModels():
-        score1 = 0  # initial conditions
-        score2 = 0
-        score3 = 0
-        score4 = 0
+        score_list1 = 0  # initial conditions
+        score_list2 = 0
+        score_list3 = 0
+        score_list4 = 0
+        sfs1 = 0
+        sfs2 = 0
+        sfs3 = 0
+        sfs4 = 0
 
         if values['-LR-']:  # if logistic regression model type is selected
-            sfs1 = SFS(model1,
+            sfs1 = SFS(logistic_regression,
                        k_features=int(values['-TESTNUM-']),
                        forward=True,
                        floating=False,
@@ -138,18 +142,19 @@ def main():
                        scoring='accuracy',
                        cv=0)
             sfs1 = sfs1.fit(pred_train, cat_train)
-            score1 = []
-            for p in range(1, int(values["-TESTNUM-"])):    # making predictions on each feature group of test set
+
+            score_list1 = []
+            for p in range(1, int(values['-TESTNUM-'])):    # making predictions on each feature group of test set
                 current_feature_set_names1 = np.array(sfs1.subsets_[p]['feature_names'])
-                pred_train_sfs1 = pred_train[current_feature_set_names1]
-                pred_test_sfs1 = pred_test[current_feature_set_names1]
-                model1.fit(pred_train_sfs1, cat_train)
-                current_predictions1 = model1.predict(pred_test_sfs1)
-                current_scores1 = accuracy_score(cat_test, current_predictions1)    # accuracy of current feature group
-                score1.append(current_scores1)
+                pred_train_sfs1 = pred_train[current_feature_set_names1]    # transform to desired feature space
+                pred_test_sfs1 = pred_test[current_feature_set_names1]      # transform to desired feature space
+                logistic_regression.fit(pred_train_sfs1, cat_train)      # fit the model to this feature space
+                current_predictions1 = logistic_regression.predict(pred_test_sfs1)       # make predictions on test set
+                current_scores1 = accuracy_score(cat_test, current_predictions1)    # accuracy of predictions
+                score_list1.append(current_scores1)
 
         if values['-SVM-']:     # if support vector machine model type is selected
-            sfs2 = SFS(model2,
+            sfs2 = SFS(support_vector_machine,
                        k_features=int(values['-TESTNUM-']),
                        forward=True,
                        floating=False,
@@ -157,18 +162,19 @@ def main():
                        scoring='accuracy',
                        cv=0)
             sfs2 = sfs2.fit(pred_train, cat_train)
-            score2 = []
+
+            score_list2 = []
             for p in range(1, int(values['-TESTNUM-'])):    # predictions for each feature set
                 current_feature_set_names2 = np.array(sfs2.subsets_[p]['feature_names'])
                 pred_train_sfs2 = pred_train[current_feature_set_names2]
                 pred_test_sfs2 = pred_test[current_feature_set_names2]
-                model2.fit(pred_train_sfs2, cat_train)
-                current_predictions2 = model2.predict(pred_test_sfs2)
+                support_vector_machine.fit(pred_train_sfs2, cat_train)
+                current_predictions2 = support_vector_machine.predict(pred_test_sfs2)
                 current_scores2 = accuracy_score(cat_test, current_predictions2)
-                score2.append(current_scores2)
+                score_list2.append(current_scores2)
 
         if values['-KNN-']:     # if K Nearest Neighbor model type is selected
-            sfs3 = SFS(model3,
+            sfs3 = SFS(k_nearest_neighbor,
                        k_features=int(values["-TESTNUM-"]),
                        forward=True,
                        floating=False,
@@ -176,18 +182,19 @@ def main():
                        scoring='accuracy',
                        cv=0)
             sfs3 = sfs3.fit(pred_train, cat_train)
-            score3 = []
+            score_list3 = []
+
             for p in range(1, int(values["-TESTNUM-"])):    # predictions for each feature set
                 current_feature_set_names = np.array(sfs3.subsets_[p]['feature_names'])
                 pred_train_sfs3 = pred_train[current_feature_set_names]
                 pred_test_sfs3 = pred_test[current_feature_set_names]
-                model3.fit(pred_train_sfs3, cat_train)
-                current_predictions3 = model3.predict(pred_test_sfs3)
+                k_nearest_neighbor.fit(pred_train_sfs3, cat_train)
+                current_predictions3 = k_nearest_neighbor.predict(pred_test_sfs3)
                 current_scores3 = accuracy_score(cat_test, current_predictions3)
-                score3.append(current_scores3)
+                score_list3.append(current_scores3)
 
         if values['-RF-']:      # if Random Forest model type is selected
-            sfs4 = SFS(model4,
+            sfs4 = SFS(random_forest,
                        k_features=int(values['-TESTNUM-']),
                        forward=True,
                        floating=False,
@@ -195,24 +202,24 @@ def main():
                        scoring='accuracy',
                        cv=0)
             sfs4 = sfs4.fit(pred_train, cat_train)
-            score4 = []
+            score_list4 = []
+
             for p in range(1, int(values['-TESTNUM-'])):    # predictions for each feature set
                 current_feature_set_names4 = np.array(sfs4.subsets_[p]['feature_names'])
                 pred_train_sfs4 = pred_train[current_feature_set_names4]
                 pred_test_sfs4 = pred_test[current_feature_set_names4]
-                model4.fit(pred_train_sfs4, cat_train)
-                current_predictions4 = model4.predict(pred_test_sfs4)
+                random_forest.fit(pred_train_sfs4, cat_train)
+                current_predictions4 = random_forest.predict(pred_test_sfs4)
                 current_scores4 = accuracy_score(cat_test, current_predictions4)
-                score4.append(current_scores4)
+                score_list4.append(current_scores4)
 
-        return score1, score2, score3, score4, sfs1, sfs2, sfs3, sfs4
+        return score_list1, score_list2, score_list3, score_list4, sfs1, sfs2, sfs3, sfs4
 
     # main landing page layout
     sg.theme('Black')
     layout = \
         [[sg.Text('Path to Folder:'), sg.Input(key='-PATH-', change_submits=True), sg.FolderBrowse(key='-PATH-'),
           sg.Button('HELP', key='-UPLOAD_HELP-')],
-
          [sg.Text('__'*46)],
 
          [sg.Text('Enter a Chunk Size (samples):    '), sg.Slider(range=(256, 8192), key='-CHUNK-', default_value=2048,
@@ -251,7 +258,8 @@ def main():
 
          [sg.Text('__'*46)],
 
-         [sg.Text('View Results: '), sg.Button('GO', key='-RESULTS-')]]
+         [sg.Text('View Results: '), sg.Button('GO', key='-RESULTS-')]
+         ]
 
     # results page layout
     layout2 = \
@@ -352,21 +360,21 @@ def main():
 
         elif event == '-PARSE-':       # Launch Data Parsing
             feature_bool = True
-            [chunk_size, hop_size, files_a, files_b, fs1, fs2] = readData()
+            [chunk_size, hop_size, files_a, files_b, fs] = readData()
 
         elif event == '-FEAT-' and feature_bool:    # Launch Feature Extraction
             model_bool = True
-            [features_a, features_b] = getFeatures(files_a, files_b, chunk_size, hop_size, fs)
+            [features_list_a, features_list_b] = getFeatures(files_a, files_b, chunk_size, hop_size, fs)
 
         elif event == '-MODEL-' and model_bool:          # Launch Model Training / Testing
-            [categories, predictors_scaled, cat_train, cat_test, pred_train, pred_test] = formatData()
-            [model1, model2, model3, model4] = initializeModels()
-            [score1, score2, score3, score4, sfs1, sfs2, sfs3, sfs4] = testModels()
+            [cat_train, cat_test, pred_train, pred_test] = formatData()
+            [logistic_regression, support_vector_machine, k_nearest_neighbor, random_forest] = initializeModels()
+            [lr_scores, svm_scores, knn_scores, rf_scores, lr_sfs, svm_sfs, knn_sfs, rf_sfs] = testModels()
             results_bool = True
 
         elif event == "-RESULTS-" and results_bool:          # launch results window
             setup_window.close()
-            plot_sfs(sfs3.get_metric_dict(), kind='std_err');
+            plot_sfs(lr_sfs.get_metric_dict(), kind='std_err');
             plt.ylim([0.8, 1])
             plt.title('Sequential Forward Selection Results')
             plt.grid()
