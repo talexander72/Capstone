@@ -230,7 +230,7 @@ def main():
 
          [sg.Text('Feature Extraction: Audio features are computed and averaged across chunks')],
 
-         [sg.Text('    (Step 1 of 3) Parse Data:'), sg.Button('LAUNCH', key='-PARSE-'),
+         [sg.Text('     (Step 1 of 3) Parse Data:   '), sg.Button('LAUNCH', key='-PARSE-'),
           sg.Button('HELP', key='-HELP1-')],
 
          [sg.Text('__'*46)],
@@ -253,7 +253,7 @@ def main():
          [sg.Checkbox('Support Vector Machine', default=True, key='-SVM-')],
          [sg.Checkbox('Multi Layer Perceptron', default=True, key='-MLP-')],
 
-         [sg.Text('    (Step 3 of 3) Train Models:'), sg.Button('LAUNCH', key='-MODEL-'),
+         [sg.Text('     (Step 3 of 3) Train Models:'), sg.Button('LAUNCH', key='-MODEL-'),
           sg.Button('HELP', key='-HELP2-')],
 
          [sg.Text('__'*46)],
@@ -265,9 +265,10 @@ def main():
     layout2 = \
         [[sg.Text('Optimization Options:')],
          [sg.Text('__'*30)],
-         [sg.Text('Option 1: Highest Accuracy (for beefy computers)'), sg.Button('GET CODE', key='-CODE1-')],
-         [sg.Text('Option 2: Best Tradeoff'), sg.Button('GET CODE', key='-CODE2-')],
-         [sg.Text('Option 3: Fastest Processing (for less beefy computers'), sg.Button('GET CODE', key='-CODE3-')]
+         [sg.Checkbox('Highest Accuracy', default=True, key='-CODE1-')],
+         [sg.Checkbox('Best Trade-off', default=True, key='-CODE2-')],
+         [sg.Checkbox('Fastest Processing', default=True, key='-CODE3-')],
+         [sg.Text('Generate Code Snippets:'), sg.Button('GET CODE', key='-CODEGEN-')]
          ]
 
     setup_window = sg.Window('Setup and Training', layout, element_justification='l')
@@ -386,7 +387,7 @@ def main():
             # plt.plot(k_features, sfs4.scores_, marker='o', label = 'Multilayer Perceptron')
             plt.plot(k_features, rf_scores, label='Random Forest', marker='o')
 
-            plt.ylim([.33, 1.02])
+            plt.ylim([.48, 1.02])
             plt.ylabel('Accuracy')
             plt.xlabel('Number of features')
             plt.grid()
