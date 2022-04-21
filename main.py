@@ -144,7 +144,7 @@ def main():
             sfs1 = sfs1.fit(pred_train, cat_train)
 
             score_list1 = []
-            for p in range(1, int(values['-TESTNUM-'])):    # making predictions on each feature group of test set
+            for p in range(1, int(values['-TESTNUM-'])+1):    # making predictions on each feature group of test set
                 current_feature_set_names1 = np.array(sfs1.subsets_[p]['feature_names'])
                 pred_train_sfs1 = pred_train[current_feature_set_names1]    # transform to desired feature space
                 pred_test_sfs1 = pred_test[current_feature_set_names1]      # transform to desired feature space
@@ -164,7 +164,7 @@ def main():
             sfs2 = sfs2.fit(pred_train, cat_train)
 
             score_list2 = []
-            for p in range(1, int(values['-TESTNUM-'])):    # predictions for each feature set
+            for p in range(1, int(values['-TESTNUM-'])+1):    # predictions for each feature set
                 current_feature_set_names2 = np.array(sfs2.subsets_[p]['feature_names'])
                 pred_train_sfs2 = pred_train[current_feature_set_names2]
                 pred_test_sfs2 = pred_test[current_feature_set_names2]
@@ -175,7 +175,7 @@ def main():
 
         if values['-KNN-']:     # if K Nearest Neighbor model type is selected
             sfs3 = SFS(k_nearest_neighbor,
-                       k_features=int(values["-TESTNUM-"]),
+                       k_features=int(values['-TESTNUM-']),
                        forward=True,
                        floating=False,
                        verbose=2,
@@ -184,7 +184,7 @@ def main():
             sfs3 = sfs3.fit(pred_train, cat_train)
             score_list3 = []
 
-            for p in range(1, int(values["-TESTNUM-"])):    # predictions for each feature set
+            for p in range(1, int(values['-TESTNUM-'])+1):    # predictions for each feature set
                 current_feature_set_names = np.array(sfs3.subsets_[p]['feature_names'])
                 pred_train_sfs3 = pred_train[current_feature_set_names]
                 pred_test_sfs3 = pred_test[current_feature_set_names]
@@ -204,7 +204,7 @@ def main():
             sfs4 = sfs4.fit(pred_train, cat_train)
             score_list4 = []
 
-            for p in range(1, int(values['-TESTNUM-'])):    # predictions for each feature set
+            for p in range(1, int(values['-TESTNUM-'])+1):    # predictions for each feature set
                 current_feature_set_names4 = np.array(sfs4.subsets_[p]['feature_names'])
                 pred_train_sfs4 = pred_train[current_feature_set_names4]
                 pred_test_sfs4 = pred_test[current_feature_set_names4]
@@ -263,8 +263,12 @@ def main():
 
     # results page layout
     layout2 = \
-        [[sg.Text('Optimization Curve:')],
-         [sg.Text('__'*30)]]
+        [[sg.Text('Optimization Options:')],
+         [sg.Text('__'*30)],
+         [sg.Text('Option 1: Highest Accuracy (for beefy computers)'), sg.Button('GET CODE', key='-CODE1-')],
+         [sg.Text('Option 2: Best Tradeoff'), sg.Button('GET CODE', key='-CODE2-')],
+         [sg.Text('Option 3: Fastest Processing (for less beefy computers'), sg.Button('GET CODE', key='-CODE3-')]
+         ]
 
     setup_window = sg.Window('Setup and Training', layout, element_justification='l')
     results_window = sg.Window('Results and Code Generation', layout2, modal=True)
@@ -374,10 +378,20 @@ def main():
 
         elif event == "-RESULTS-" and results_bool:          # launch results window
             setup_window.close()
-            plot_sfs(lr_sfs.get_metric_dict(), kind='std_err');
-            plt.ylim([0.8, 1])
-            plt.title('Sequential Forward Selection Results')
+
+            k_features = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+            plt.plot(k_features, lr_scores, label='Logistic Regression', marker='o')
+            plt.plot(k_features, svm_scores, label='Support Vector Machine', marker='o')
+            plt.plot(k_features, knn_scores, label='K Nearest Neighbor', marker='o')
+            # plt.plot(k_features, sfs4.scores_, marker='o', label = 'Multilayer Perceptron')
+            plt.plot(k_features, rf_scores, label='Random Forest', marker='o')
+
+            plt.ylim([.33, 1.02])
+            plt.ylabel('Accuracy')
+            plt.xlabel('Number of features')
             plt.grid()
+            plt.tight_layout()
+            plt.legend()
             plt.show()
             while True:
                 event2, values2 = results_window.read()
