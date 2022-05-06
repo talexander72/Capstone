@@ -216,11 +216,94 @@ def main():
 
         return score_list1, score_list2, score_list3, score_list4, sfs1, sfs2, sfs3, sfs4
 
-    def draw_figure(canvas, figure):
+    def drawFigure(canvas, figure):
         figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
         figure_canvas_agg.draw()
         figure_canvas_agg.get_tk_widget().pack(side='top', fill='both', expand=1)
         return figure_canvas_agg
+
+    def generateSnippet():
+        snip_read_data = [
+            'def readData():',
+            '    chunk = ' + values['-CHUNK-'],
+            '    hop = ' + (1 - (values['-HOP-']) / 100) * chunk,
+            '    class_names = ' + os.listdir(values['-PATH-']) +
+            '    filenames_1 = ' + os.listdir(values['-PATH-'] + '/' + class_names[1]) +
+            '    filenames_2 = ' + os.listdir(values['-PATH-'] + '/' + class_names[2]) +
+            '    num_files = len(filenames_1) + len(filenames_2)',
+            '    time_series_a = []  # initializing variables',
+            '    time_series_b = []',
+            '    bool_check = True',
+            '    for i in range(num_files):  # step 1 progress bar',
+            '        if i < len(filenames_1):    # processing class A',
+            '            [current_fs1, x] = read(values[\'-PATH-\'] + \'/\' + class_names[1] + \'/\' + filenames_1[i])',
+            '            x = x[:, 0]  # grabbing only channel 1 of recording',
+            '            time_series_a.extend(x)',
+            '            if bool_check:  # grabbing the first returned sampling-rate to check subsequent values against',
+            '                sampling_rate_check = current_fs1',
+            '                bool_check = False',
+            '            else:',
+            '                if sampling_rate_check != current_fs1:',
+            '                    raise Warning(\'Please make sure all files have the same sampling rate\')',
+            '        else:   # processing class B',
+            '            [current_fs2, x2] = read(values[\'-PATH-\'] + \'/\' + class_names[2] + \'/\' + filenames_2[i - len(filenames_1)])',
+            '            x2 = x2[:, 0]  # grabbing only channel 1',
+            '            time_series_b.extend(x2)',
+            '            if sampling_rate_check != current_fs2:',
+            '                raise Warning(\'Please make sure all files have the same sampling rate\')',
+            '    return chunk, hop, time_series_a, time_series_b, sampling_rate_check'
+        ]
+
+        snip_get_features = [
+            'def getFeatures(time_series_a, time_series_b, chunk, hop, sampling_rate):',
+            '    def helpGetFeatures(feature, file, f_s):',
+            '        [vsf, t] = pyACA.computeFeature(feature, file, f_s, iBlockLength=chunk, iHopLength=hop)',
+            '        return vsf',
+            '    time_series_a = np.array(time_series_a)     # initializing variables',
+            '    time_series_b = np.array(time_series_b)',
+            '    features_a = []',
+            '    features_b = []',
+            '    feature_names = ' + sfs1.subsets_[4]['feature_names'] +
+            '    for f in range(len(feature_names)):',
+            '        current_feature_a = helpGetFeatures(feature_names[f], time_series_a, sampling_rate)',
+            '        features_a.append(current_feature_a)',
+            '        current_feature_b = helpGetFeatures(feature_names[f], time_series_b, sampling_rate)',
+            '        features_b.append(current_feature_b)',
+            '    return features_a, features_b'
+        ]
+
+        snip_format_data = [
+            'def formatData():',
+            '    data1 = np.ones(' + len(features_list_a[0]) +
+            '    data2 = np.zeros(' + len(features_list_b[0]) +
+            '    data3 = np.concatenate((data1, data2))',
+            '    data5 = []',
+            '    feature_names = ' + sfs1.subsets_[4]['feature_names'] +
+            '    for d in range(len(feature_names)):',
+            '        data4 = np.concatenate([features_list_a[d], features_list_b[d]])',
+            '        data5.append(data4)',
+            '    categories = pd.DataFrame(data3)',
+            '    predictors = pd.DataFrame(data5).transpose()',
+            '    predictors.columns = feature_names',
+            '    predictors_scaled = predictors.copy()  # normalization of audio features',
+            '    for i in feature_names:',
+            '        predictors_scaled[i] = (predictors_scaled[i] - predictors_scaled[i].min())' + str(' / \\'),
+            '                               (predictors_scaled[i].max() - predictors_scaled[i].min())',
+            '    training_categories, testing_categories, training_predictors, testing_predictors \\',
+            '        = train_test_split(categories, predictors_scaled, test_size=.2, random_state=25)',
+            '    return training_categories, testing_categories, training_predictors, testing_predictors'
+
+        ]
+
+        snip_initialize_models = [
+            'def initializeModels():',
+            '    model1 = LogisticRegression(solver=\'lbfgs\', max_iter=200)',
+            '    model2 = svm.SVC()',
+            '    model3 = KNeighborsClassifier(n_neighbors=3)',
+            '    model4 = RandomForestClassifier(max_depth=2, random_state=0)',
+            '    return model1, model2, model3, model4'
+        ]
+        return snip_read_data, snip_get_features, snip_format_data, snip_initialize_models
 
     # main landing page layout
     sg.theme('Black')
@@ -258,7 +341,6 @@ def main():
          [sg.Checkbox('K Nearest Neighbor', default=True, key='-KNN-')],
          [sg.Checkbox('Random Forest', default=True, key='-RF-')],
          [sg.Checkbox('Support Vector Machine', default=True, key='-SVM-')],
-         [sg.Checkbox('Multi Layer Perceptron', default=True, key='-MLP-')],
 
          [sg.Text('     (Step 3 of 3) Train Models:'), sg.Button('LAUNCH', key='-MODEL-'),
           sg.Button('HELP', key='-HELP2-')],
@@ -329,11 +411,10 @@ def main():
                     'Using the formatted and normalized data from stage 1, multiple machine learning models'
                     ' are trained.')],
                  [sg.Text(
-                    'This program supports 5 types of ML models: Logistic Regression, K Nearest Neighbor, '
+                    'This program supports 4 types of ML models: Logistic Regression, K Nearest Neighbor, '
                     'Random Forest,')],
                  [sg.Text(
-                    'Support Vector Machine, and Multilayer Perceptron. Each of these models interpret'
-                    ' training data')],
+                    'and Support Vector Machine. Each of these models interpret training data')],
                  [sg.Text(
                     'differently, and make their predictions accordingly.')],
                  [sg.Text('__' * 46)],
@@ -411,15 +492,32 @@ def main():
                 if event2 == "Exit" or event2 == sg.WIN_CLOSED:
                     break
                 if event2 == '-CODEGEN-':
+                    [snip1, snip2, snip3, snip4] = generateSnippet()
+                    snip5 = [
+                        '[chunk_size, hop_size, files_a, files_b, fs] = readData()',
+                        '[features_list_a, features_list_b] = getFeatures(files_a, files_b, chunk_size, hop_size, fs)',
+                        '[cat_train, cat_test, pred_train, pred_test] = formatData()',
+                        '[logistic_regression, support_vector_machine, k_nearest_neighbor, random_forest] = initializeModels()',
+                        ]
+
                     if values2['-CODE1-']:
-                        x = 1
-                        # generate high-accuracy code
+                        optimal_num_features = 7
+                        optimal_model = ['sfs' + optimal_num_features +
+                                         '.subsets_[' + optimal_num_features + '][\'feature_names\']']
+                        snip6 = [optimal_model + '.fit(pred_train, cat_train)']
+
                     if values2['-CODE1-']:
-                        x = 1
-                        # generate trade-off code
+                        optimal_num_features = 5
+                        optimal_model = ['sfs' + optimal_num_features +
+                                         '.subsets_[' + optimal_num_features + '][\'feature_names\']']
+                        snip6 = [optimal_model + '.fit(pred_train, cat_train)']
+
                     if values2['-CODE3-']:
-                        x = 1
-                        # generate high_speed code
+                        optimal_num_features = 3
+                        optimal_model = ['sfs' + optimal_num_features +
+                                         '.subsets_[' + optimal_num_features + '][\'feature_names\']']
+                        snip6 = [optimal_model + '.fit(pred_train, cat_train)']
+
         elif event == sg.WIN_CLOSED or event == "Exit":
             break
 
