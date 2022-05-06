@@ -1,0 +1,8 @@
+pyACA
+pySimpleGUI
+scipy
+pandas
+numpy
+matplotlib
+sklearn
+mlxtend
