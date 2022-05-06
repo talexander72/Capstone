@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import pyACA
 
 from sklearn.model_selection import StratifiedKFold, KFold
@@ -215,6 +216,12 @@ def main():
 
         return score_list1, score_list2, score_list3, score_list4, sfs1, sfs2, sfs3, sfs4
 
+    def draw_figure(canvas, figure):
+        figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
+        figure_canvas_agg.draw()
+        figure_canvas_agg.get_tk_widget().pack(side='top', fill='both', expand=1)
+        return figure_canvas_agg
+
     # main landing page layout
     sg.theme('Black')
     layout = \
@@ -263,7 +270,8 @@ def main():
 
     # results page layout
     layout2 = \
-        [[sg.Text('Optimization Options:')],
+        [[sg.Canvas(key='figCanvas')],
+         [sg.Text('Optimization Options:')],
          [sg.Text('__'*30)],
          [sg.Checkbox('Highest Accuracy', default=True, key='-CODE1-')],
          [sg.Checkbox('Best Trade-off', default=True, key='-CODE2-')],
@@ -272,7 +280,7 @@ def main():
          ]
 
     setup_window = sg.Window('Setup and Training', layout, element_justification='l')
-    results_window = sg.Window('Results and Code Generation', layout2, modal=True)
+    results_window = sg.Window('Results and Code Generation', layout2, modal=True, finalize=True)
     help_window1 = None
     help_window2 = None
     upload_help_window = None
@@ -381,23 +389,37 @@ def main():
             setup_window.close()
 
             k_features = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-            plt.plot(k_features, lr_scores, label='Logistic Regression', marker='o')
-            plt.plot(k_features, svm_scores, label='Support Vector Machine', marker='o')
-            plt.plot(k_features, knn_scores, label='K Nearest Neighbor', marker='o')
-            # plt.plot(k_features, sfs4.scores_, marker='o', label = 'Multilayer Perceptron')
-            plt.plot(k_features, rf_scores, label='Random Forest', marker='o')
-
+            fig = plt.figure()
+            if values['-LR-']:
+                plt.plot(k_features, lr_scores, label='Logistic Regression', marker='o')
+            if values['-SVM-']:
+                plt.plot(k_features, svm_scores, label='Support Vector Machine', marker='o')
+            if values['-KNN-']:
+                plt.plot(k_features, knn_scores, label='K Nearest Neighbor', marker='o')
+            if values['-RF-']:
+                plt.plot(k_features, rf_scores, label='Random Forest', marker='o')
             plt.ylim([.48, 1.02])
             plt.ylabel('Accuracy')
             plt.xlabel('Number of features')
+            plt.title('Model Performance Evaluation')
             plt.grid()
             plt.tight_layout()
             plt.legend()
-            plt.show()
+            draw_figure(results_window['figCanvas'].TKCanvas, fig)
             while True:
                 event2, values2 = results_window.read()
                 if event2 == "Exit" or event2 == sg.WIN_CLOSED:
                     break
+                if event2 == '-CODEGEN-':
+                    if values2['-CODE1-']:
+                        x = 1
+                        # generate high-accuracy code
+                    if values2['-CODE1-']:
+                        x = 1
+                        # generate trade-off code
+                    if values2['-CODE3-']:
+                        x = 1
+                        # generate high_speed code
         elif event == sg.WIN_CLOSED or event == "Exit":
             break
 
