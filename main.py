@@ -34,6 +34,7 @@ def main():
                     'SpectralRolloff', 'SpectralSkewness', 'SpectralSpread', 'SpectralTonalPowerRatio']
     feature_names = feature_list
 
+
     def readData():
         chunk = values['-CHUNK-']
         hop = (1 - (values['-HOP-']) / 100) * chunk
@@ -71,6 +72,7 @@ def main():
 
         return chunk, hop, time_series_a, time_series_b, sampling_rate_check
 
+
     def getFeatures(time_series_a, time_series_b, chunk, hop, sampling_rate):
 
         def helpGetFeatures(feature, file, f_s):
@@ -92,6 +94,7 @@ def main():
             features_b.append(current_feature_b)
 
         return features_a, features_b
+
 
     def formatData():
         data1 = np.ones(len(features_list_a[0]))
@@ -116,6 +119,7 @@ def main():
 
         return training_categories, testing_categories, training_predictors, testing_predictors
 
+
     def initializeModels():
         model1 = LogisticRegression(solver='lbfgs', max_iter=200)
         model2 = svm.SVC()
@@ -123,6 +127,7 @@ def main():
         model4 = RandomForestClassifier(max_depth=2, random_state=0)
 
         return model1, model2, model3, model4
+
 
     def testModels():
         score_list1 = 0  # initial conditions
@@ -216,11 +221,13 @@ def main():
 
         return score_list1, score_list2, score_list3, score_list4, sfs1, sfs2, sfs3, sfs4
 
+
     def drawFigure(canvas, figure):
         figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
         figure_canvas_agg.draw()
         figure_canvas_agg.get_tk_widget().pack(side='top', fill='both', expand=1)
         return figure_canvas_agg
+
 
     def generateSnippet():
         snip_read_data = [
@@ -343,7 +350,7 @@ def main():
          [sg.Checkbox('Support Vector Machine', default=True, key='-SVM-')],
 
          [sg.Text('     (Step 3 of 3) Train Models:'), sg.Button('LAUNCH', key='-MODEL-'),
-          sg.Button('HELP', key='-HELP2-')],
+          sg.Button('HELP', key='-HELP3-')],
 
          [sg.Text('__'*46)],
 
@@ -362,7 +369,7 @@ def main():
          ]
 
     setup_window = sg.Window('Setup and Training', layout, element_justification='l')
-    results_window = sg.Window('Results and Code Generation', layout2, modal=True, finalize=True)
+    results_window = sg.Window('Results and Code Generation', layout2, finalize=True)
     help_window1 = None
     help_window2 = None
     upload_help_window = None
@@ -378,17 +385,25 @@ def main():
         if event == '-HELP1-':  # launching help window for stage 1
             help_layout1 = \
                 [[sg.Text(
-                    'Stage 1 encompasses data parsing and feature extraction:')],
+                    'Stage 1 encompasses data parsing:')],
                  [sg.Text(
-                     'First, files are read in from a user-selected folder. Each file is saved as a list of numbers')],
+                     'Files are first read in from a user-selected folder. Each file is saved as a list of numbers')],
                  [sg.Text(
-                     'representing air pressure over time, with an accompanying sample rate for reconstruction')],
+                     'representing air pressure at different points in time, with an accompanying sample rate for reconstruction')],
                  [sg.Text(
-                     'Machine learning models perform best when trained on consistently formatted data, so we split '
-                     'each')],
+                     'Machine learning models perform best when trained on consistently formatted data, so we split each')],
                  [sg.Text(
-                     'variable-length file into many "chunks" of the same length prior to feature extraction.')],
+                     'variable-length file into many "chunks" of the same length before moving forward.')],
                  [sg.Text('__' * 46)],
+                ]
+            help_window1 = sg.Window("Data Parsing - Help", help_layout1, finalize=True)
+            if event == sg.WIN_CLOSED:
+                help_window1.close()
+
+        elif event == '-HELP2-':    # launch help window for stage 2
+            help_layout2 = \
+                [[sg.Text(
+                    'Stage 2 encompasses audio feature extraction:')],
                  [sg.Text(
                      'Audio feature extraction refers to the computation of meaningful information from a raw')],
                  [sg.Text(
@@ -398,15 +413,15 @@ def main():
                  [sg.Text(
                      'robust and accurate model')],
                  [sg.Text('__'*46)]
-                 ]
-            help_window1 = sg.Window("Data Parsing Help", help_layout1, finalize=True)
+                ]
+            help_window2 = sg.Window('Audio Feature Extraction - Help', help_layout2, finalize=True)
             if event == sg.WIN_CLOSED:
-                help_window1.close()
+                help_window2.close()
 
-        elif event == '-HELP2-':    # launch help window for stage 2
-            help_layout2 = \
+        elif event == '-HELP3-':    # launch help window for stage 3
+            help_layout3 = \
                 [[sg.Text(
-                    'Stage 2 encompasses model training and sequential forward selection of features:')],
+                    'Stage 3 encompasses model training and sequential forward selection of features:')],
                  [sg.Text(
                     'Using the formatted and normalized data from stage 1, multiple machine learning models'
                     ' are trained.')],
@@ -435,9 +450,9 @@ def main():
                  [sg.Text(
                     'speed as well as accuracy in many cases')],
                  [sg.Text('__' * 46)]]
-            help_window2 = sg.Window('Model Evaluation Help', help_layout2, finalize=True)
+            help_window3 = sg.Window('Model Evaluation - Help', help_layout3, finalize=True)
             if event == sg.WIN_CLOSED:
-                help_window2.close()
+                help_window3.close()
 
         elif event == '-UPLOAD_HELP-':
             upload_help_layout = \
@@ -448,7 +463,7 @@ def main():
                  [sg.Text(
                     'Please ensure that each subclass folder contains only .wav files of the same sampling rate')]
                  ]
-            upload_help_window = sg.Window('Dataset Upload Help', upload_help_layout, finalize=True)
+            upload_help_window = sg.Window('Dataset Upload - Help', upload_help_layout, finalize=True)
             if event == sg.WIN_CLOSED:
                 upload_help_window.close()
 
@@ -486,7 +501,7 @@ def main():
             plt.grid()
             plt.tight_layout()
             plt.legend()
-            draw_figure(results_window['figCanvas'].TKCanvas, fig)
+            drawFigure(results_window['figCanvas'].TKCanvas, fig)
             while True:
                 event2, values2 = results_window.read()
                 if event2 == "Exit" or event2 == sg.WIN_CLOSED:
@@ -503,19 +518,19 @@ def main():
                     if values2['-CODE1-']:
                         optimal_num_features = 7
                         optimal_model = ['sfs' + optimal_num_features +
-                                         '.subsets_[' + optimal_num_features + '][\'feature_names\']']
+                                            '.subsets_[' + optimal_num_features + '][\'feature_names\']']
                         snip6 = [optimal_model + '.fit(pred_train, cat_train)']
 
-                    if values2['-CODE1-']:
+                    if values2['-CODE2-']:
                         optimal_num_features = 5
                         optimal_model = ['sfs' + optimal_num_features +
-                                         '.subsets_[' + optimal_num_features + '][\'feature_names\']']
+                                            '.subsets_[' + optimal_num_features + '][\'feature_names\']']
                         snip6 = [optimal_model + '.fit(pred_train, cat_train)']
 
                     if values2['-CODE3-']:
                         optimal_num_features = 3
                         optimal_model = ['sfs' + optimal_num_features +
-                                         '.subsets_[' + optimal_num_features + '][\'feature_names\']']
+                                            '.subsets_[' + optimal_num_features + '][\'feature_names\']']
                         snip6 = [optimal_model + '.fit(pred_train, cat_train)']
 
         elif event == sg.WIN_CLOSED or event == "Exit":
