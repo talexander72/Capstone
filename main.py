@@ -379,7 +379,7 @@ def main():
     results_bool = False    # initializing results window in the background
     count = 0               # initializing tracker for window 2 launch event
 
-    # launching landing page:
+    # launch landing page:
     while True:
         event, values = setup_window.read()
         if event == '-HELP1-':  # launching help window for stage 1
