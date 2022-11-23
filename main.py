@@ -40,8 +40,8 @@ def main():
         hop = (1 - (values['-HOP-']) / 100) * chunk
 
         class_names = os.listdir(values['-PATH-'])
-        filenames_1 = os.listdir(values['-PATH-'] + '/' + class_names[1])
-        filenames_2 = os.listdir(values['-PATH-'] + '/' + class_names[2])
+        filenames_1 = os.listdir(values['-PATH-'] + '/' + class_names[0])
+        filenames_2 = os.listdir(values['-PATH-'] + '/' + class_names[1])
         num_files = len(filenames_1) + len(filenames_2)
 
         time_series_a = []  # initializing variables
@@ -53,7 +53,7 @@ def main():
                 break
 
             if i < len(filenames_1):    # processing class A
-                [current_fs1, x] = read(values['-PATH-'] + '/' + class_names[1] + '/' + filenames_1[i])
+                [current_fs1, x] = read(values['-PATH-'] + '/' + class_names[0] + '/' + filenames_1[i])
                 x = x[:, 0]  # grabbing only channel 1 of recording
                 time_series_a.extend(x)
                 if bool_check:  # grabbing the first returned sampling-rate to check subsequent values against
@@ -64,7 +64,7 @@ def main():
                         raise Warning('Please make sure all files have the same sampling rate')
 
             else:   # processing class B
-                [current_fs2, x2] = read(values['-PATH-'] + '/' + class_names[2] + '/' + filenames_2[i - len(filenames_1)])
+                [current_fs2, x2] = read(values['-PATH-'] + '/' + class_names[1] + '/' + filenames_2[i - len(filenames_1)])
                 x2 = x2[:, 0]  # grabbing only channel 1
                 time_series_b.extend(x2)
                 if sampling_rate_check != current_fs2:
@@ -232,11 +232,11 @@ def main():
     def generateSnippet():
         snip_read_data = [
             'def readData():',
-            '    chunk = ' + values['-CHUNK-'],
-            '    hop = ' + (1 - (values['-HOP-']) / 100) * chunk,
+            '    chunk = ' + str(values['-CHUNK-']),
+            '    hop = ' + str((1 - (values['-HOP-']) / 100) * values['-CHUNK-']),
             '    class_names = ' + os.listdir(values['-PATH-']) +
-            '    filenames_1 = ' + os.listdir(values['-PATH-'] + '/' + class_names[1]) +
-            '    filenames_2 = ' + os.listdir(values['-PATH-'] + '/' + class_names[2]) +
+            '    filenames_1 = ' + os.listdir(values['-PATH-'] + '/' + 'abnormal') +
+            '    filenames_2 = ' + os.listdir(values['-PATH-'] + '/' + 'normal') +
             '    num_files = len(filenames_1) + len(filenames_2)',
             '    time_series_a = []  # initializing variables',
             '    time_series_b = []',
@@ -281,8 +281,8 @@ def main():
 
         snip_format_data = [
             'def formatData():',
-            '    data1 = np.ones(' + len(features_list_a[0]) +
-            '    data2 = np.zeros(' + len(features_list_b[0]) +
+            '    data1 = np.ones(' + str(len(features_list_a[0])) +
+            '    data2 = np.zeros(' + str(len(features_list_b[0])) +
             '    data3 = np.concatenate((data1, data2))',
             '    data5 = []',
             '    feature_names = ' + sfs1.subsets_[4]['feature_names'] +
@@ -354,8 +354,7 @@ def main():
 
          [sg.Text('__'*46)],
 
-         [sg.Text('View Results: '), sg.Button('GO', key='-RESULTS-')]
-         ]
+         [sg.Text('View Results: '), sg.Button('GO', key='-RESULTS-')]]
 
     # results page layout
     layout2 = \
@@ -368,11 +367,13 @@ def main():
          [sg.Text('Generate Code Snippets:'), sg.Button('GET CODE', key='-CODEGEN-')]
          ]
 
+
     setup_window = sg.Window('Setup and Training', layout, element_justification='l')
     results_window = sg.Window('Results and Code Generation', layout2, finalize=True)
     help_window1 = None
     help_window2 = None
     upload_help_window = None
+    code_window = None
 
     feature_bool = False
     model_bool = False      # deactivating buttons that aren't supposed to be used yet
@@ -480,7 +481,7 @@ def main():
             [logistic_regression, support_vector_machine, k_nearest_neighbor, random_forest] = initializeModels()
             [lr_scores, svm_scores, knn_scores, rf_scores, lr_sfs, svm_sfs, knn_sfs, rf_sfs] = testModels()
             results_bool = True
-
+        
         elif event == "-RESULTS-" and results_bool:          # launch results window
             setup_window.close()
 
@@ -506,32 +507,64 @@ def main():
                 event2, values2 = results_window.read()
                 if event2 == "Exit" or event2 == sg.WIN_CLOSED:
                     break
-                if event2 == '-CODEGEN-':
-                    [snip1, snip2, snip3, snip4] = generateSnippet()
-                    snip5 = [
-                        '[chunk_size, hop_size, files_a, files_b, fs] = readData()',
-                        '[features_list_a, features_list_b] = getFeatures(files_a, files_b, chunk_size, hop_size, fs)',
-                        '[cat_train, cat_test, pred_train, pred_test] = formatData()',
-                        '[logistic_regression, support_vector_machine, k_nearest_neighbor, random_forest] = initializeModels()',
-                        ]
+                elif event2 == '-CODEGEN-':
+                    code_page = \
+                        [[sg.Text('def readData():')],
+                        [sg.Text('    chunk = (values[\'-CHUNK-\'])')],
+                        [sg.Text('    hop = (1 - (values[\'-HOP-\']) / 100) * values[\'-CHUNK-\']')],
+                        [sg.Text('    class_names = os.listdir(values[\'-PATH-\'])')],
+                        [sg.Text('    filenames_1 = os.listdir(values[\'-PATH-\'] + \'/\' + \'abnormal\')')],
+                        [sg.Text('    filenames_2 = os.listdir(values[\'-PATH-\'] + \'/\' + \'normal\')')],
+                        [sg.Text('    num_files = len(filenames_1) + len(filenames_2)')],
+                        [sg.Text('    time_series_a = []  # initializing variables')],
+                        [sg.Text('    time_series_b = []')],
+                        [sg.Text('    bool_check = True')],
+                        [sg.Text('    for i in range(num_files):  # step 1 progress bar')],
+                        [sg.Text('        if i < len(filenames_1):    # processing class A')],
+                        [sg.Text('            [current_fs1, x] = read(values[\'-PATH-\'] + \'/\' + class_names[1] + \'/\' + filenames_1[i])')],
+                        [sg.Text('            x = x[:, 0]  # grabbing only channel 1 of recording')],
+                        [sg.Text('            time_series_a.extend(x)')],
+                        [sg.Text('            if bool_check:  # grabbing the first returned sampling-rate to check subsequent values against')],
+                        [sg.Text('                sampling_rate_check = current_fs1')],
+                        [sg.Text('                bool_check = False')],
+                        [sg.Text('            else:')],
+                        [sg.Text('                if sampling_rate_check != current_fs1:')],
+                        [sg.Text('                    raise Warning(\'Please make sure all files have the same sampling rate\')')],
+                        [sg.Text('        else:   # processing class B')],
+                        [sg.Text('            [current_fs2, x2] = read(values[\'-PATH-\'] + \'/\' + class_names[2] + \'/\' + filenames_2[i - len(filenames_1)])')],
+                        [sg.Text('            x2 = x2[:, 0]  # grabbing only channel 1')],
+                        [sg.Text('            time_series_b.extend(x2)')],
+                        [sg.Text('            if sampling_rate_check != current_fs2:')],
+                        [sg.Text('                raise Warning(\'Please make sure all files have the same sampling rate\')')],
+                        [sg.Text('    return chunk, hop, time_series_a, time_series_b, sampling_rate_check')]]
+                    code_window = sg.Window('Optimized Code', code_page, finalize=True)
+                    if event == sg.WIN_CLOSED:
+                        code_window.close()
+#                    [snip1, snip2, snip3, snip4] = generateSnippet()
+#                    snip5 = [
+#                        '[chunk_size, hop_size, files_a, files_b, fs] = readData()',
+#                        '[features_list_a, features_list_b] = getFeatures(files_a, files_b, chunk_size, hop_size, fs)',
+#                        '[cat_train, cat_test, pred_train, pred_test] = formatData()',
+#                        '[logistic_regression, support_vector_machine, k_nearest_neighbor, random_forest] = initializeModels()',
+#                        ]
 
-                    if values2['-CODE1-']:
-                        optimal_num_features = 7
-                        optimal_model = ['sfs' + optimal_num_features +
-                                            '.subsets_[' + optimal_num_features + '][\'feature_names\']']
-                        snip6 = [optimal_model + '.fit(pred_train, cat_train)']
+#                   if values2['-CODE1-']:
+#                       optimal_num_features = 7
+#                       optimal_model = ['sfs' + optimal_num_features +
+#                                           '.subsets_[' + optimal_num_features + '][\'feature_names\']']
+#                        snip6 = [optimal_model + '.fit(pred_train, cat_train)']
 
-                    if values2['-CODE2-']:
-                        optimal_num_features = 5
-                        optimal_model = ['sfs' + optimal_num_features +
-                                            '.subsets_[' + optimal_num_features + '][\'feature_names\']']
-                        snip6 = [optimal_model + '.fit(pred_train, cat_train)']
+#                    if values2['-CODE2-']:
+#                        optimal_num_features = 5
+#                        optimal_model = ['sfs' + optimal_num_features +
+#                                            '.subsets_[' + optimal_num_features + '][\'feature_names\']']
+#                        snip6 = [optimal_model + '.fit(pred_train, cat_train)']
 
-                    if values2['-CODE3-']:
-                        optimal_num_features = 3
-                        optimal_model = ['sfs' + optimal_num_features +
-                                            '.subsets_[' + optimal_num_features + '][\'feature_names\']']
-                        snip6 = [optimal_model + '.fit(pred_train, cat_train)']
+#                    if values2['-CODE3-']:
+#                        optimal_num_features = 3
+#                        optimal_model = ['sfs' + optimal_num_features +
+#                                            '.subsets_[' + optimal_num_features + '][\'feature_names\']']
+#                        snip6 = [optimal_model + '.fit(pred_train, cat_train)']
 
         elif event == sg.WIN_CLOSED or event == "Exit":
             break
