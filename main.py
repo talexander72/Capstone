@@ -712,6 +712,111 @@ else:\n\
                     code_window = sg.Window('Optimized Code', code_page, finalize=True)
                     if event == sg.WIN_CLOSED:
                         code_window.close()
+                elif event2 == '-CODE3-':
+                    code_page = \
+[[sg.Multiline(\
+'import os\n\
+import pandas as pd\n\
+import numpy as np\n\
+import math\n\
+import matplotlib.pyplot as plt\n\
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg\n\
+import pyACA\n\
+from sklearn.model_selection import StratifiedKFold, KFold\n\
+from sklearn.model_selection import train_test_split\n\
+from sklearn.linear_model import LogisticRegression\n\
+from sklearn import svm\n\
+from sklearn.neighbors import KNeighborsClassifier\n\
+from sklearn.ensemble import RandomForestClassifier\n\
+from sklearn.preprocessing import StandardScaler\n\
+\n\
+def readData():\n\
+    chunk = (' + str(values['-CHUNK-']) + ')\n\
+    hop = (' + str(1 - (values['-HOP-'] / 100) * values['-CHUNK-']) + ')\n\
+    class_names = os.listdir(' + str(values['-PATH-']) + ')\n\
+    filenames_1 = os.listdir(' + str(values['-PATH-']) + '/' + class_names[0] +'\n\
+    filenames_2 = os.listdir(' + str(values['-PATH-']) + '/' + class_names[1] + '\n\
+    num_files = len(filenames_1) + len(filenames_2)\n\
+    time_series_a = []  # initializing variables\n\
+    time_series_b = []\n\
+    bool_check = True\n\
+    for i in range(num_files):\n\
+        if i < len(filenames_1):    # processing class A\n\
+            [current_fs1, x] = read(' + str(values['-PATH-']) + class_names[0] + '/filenames_1[i])\n\
+            x = x[:, 0]  # grabbing only channel 1 of recording\n\
+            time_series_a.extend(x)\n\
+            if bool_check:  # grabbing the first returned sampling-rate to check subsequent values against\n\
+                sampling_rate_check = current_fs1\n\
+                bool_check = False\n\
+            else:\n\
+                if sampling_rate_check != current_fs1:\n\
+                    raise Warning(\'Please make sure all files have the same sampling rate\')\n\
+        else:\n\
+            [current_fs2, x2] = read(' + str(values['-PATH-']) + '/' + class_names[1] + '/filenames_2[i - len(filenames_1)])\n\
+            x2 = x2[:, 0]  # grabbing only channel 1\n\
+            time_series_b.extend(x2)\n\
+            if sampling_rate_check != current_fs2:\n\
+                raise Warning(\'Please make sure all files have the same sampling rate\')\n\
+    return chunk, hop, time_series_a, time_series_b, sampling_rate_check, class_names, filenames1, filenames2\n\
+\n\
+\n\
+def getFeatures(time_series_a, time_series_b, chunk, hop, sampling_rate):\n\
+    def helpGetFeatures(feature, file, f_s):\n\
+        [vsf, t] = pyACA.computeFeature(feature, file, f_s, iBlockLength=chunk, iHopLength=hop)\n\
+        return vsf\n\
+    time_series_a = np.array(time_series_a)     # initializing variables\n\
+    time_series_b = np.array(time_series_b)\n\
+    features_a = []\n\
+    features_b = []\n\
+    feature_names = [\'SpectralCentroid\', \'SpectralCrestFactor\', \'SpectralDecrease\', \'SpectralFlatness\', \\\n\
+                        \'SpectralFlux\', \'SpectralRolloff\', \'SpectralSkewness\', \'SpectralSpread\', \'SpectralTonalPowerRatio\']\n\
+    feature_names = feature_names[0:{0}]\n\
+    for f in range(len(feature_names)):\n\
+        current_feature_a = helpGetFeatures(feature_names[f], time_series_a, sampling_rate)\n\
+        features_a.append(current_feature_a)\n\
+        current_feature_b = helpGetFeatures(feature_names[f], time_series_b, sampling_rate)\n\
+        features_b.append(current_feature_b)\n\
+    return features_a, features_b\n\
+\n\
+\n\
+def formatData():\n\
+    data1 = np.ones(len(features_list_a[0]))\n\
+    data2 = np.zeros(str(len(features_list_b[0]))\n\
+    data3 = np.concatenate((data1, data2))\n\
+    data5 = []\n\
+    for d in range(len(feature_names)):\n\
+        data4 = np.concatenate([features_list_a[d], features_list_b[d]])\n\
+        data5.append(data4)\n\
+    categories = pd.DataFrame(data3)\n\
+    predictors = pd.DataFrame(data5).transpose()\n\
+    predictors.columns = feature_names\n\
+    predictors_scaled = predictors.copy()  # normalization of audio features\n\
+    for i in feature_names:\n\
+        predictors_scaled[i] = (predictors_scaled[i] - predictors_scaled[i].min()) / (predictors_scaled[i].max() - predictors_scaled[i].min())\n\
+        training_categories, testing_categories, training_predictors, testing_predictors = train_test_split(categories, predictors_scaled, test_size=.2, random_state=25)\n\
+    return training_categories, testing_categories, training_predictors, testing_predictors\n\
+\n\
+\n\
+[chunk, hop, time_series_a, time_series_b, sampling_rate_check, class_names, filenames_1, filenames_2] = readData()\n\
+[features_list_a, features_list_b] = getFeatures(time_series_a, time_series_b, chunk, hop, sampling_rate)\n\
+[cat_train, cat_test, pred_train, pred_test] = formatData()\n\
+if \'{1}\' == \'LR\':\n\
+    logistic_regression = LogisticRegression(solver=\'lbfgs\', max_iter=200)\n\
+    logistic_regression.fit(pred_train, cat_train)\n\
+elif \'{1}\' == \'SVM\':\n\
+    support_vector_machine = svm.SVC()\n\
+    support_vector_machine.fit(pred_train, cat_train)\n\
+elif \'{1}\' == \'KNN\':\n\
+    k_nearest_neighbor = KNeighborsClassifier(n_neighbors=3)\n\
+    k_nearest_neighbor.fit(pred_train, cat_train)\n\
+else:\n\
+    random_forest = RandomForestClassifier(max_depth=2, random_state=0)\n\
+    random_forest.fit(pred_train, cat_train)\n' .format((num+num_eff)//2,model_eff), size=(100,55), font=(sg.DEFAULT_FONT, 14))]]
+
+                        
+                    code_window = sg.Window('Optimized Code', code_page, finalize=True)
+                    if event == sg.WIN_CLOSED:
+                        code_window.close()
         if event == sg.WIN_CLOSED or event == "Exit":
             break
 
