@@ -263,7 +263,7 @@ def main():
     
     def findMaxEfficiency(score_list1, score_list2, score_list3, score_list4):
         eff1, eff2, eff3, eff4 = 0,0,0,0
-        num1, num2, num3, num4 = 0,0,0,0
+        num1, num2, num3, num4 = 1,1,1,1
         if score_list1 != 0:
             for num, score in enumerate(score_list1):
                 if score > 80:
