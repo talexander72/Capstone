@@ -604,7 +604,7 @@ elif \'{1}\' == \'KNN\':\n\
 else:\n\
     random_forest = RandomForestClassifier(max_depth=2, random_state=0)\n\
     random_forest.fit(pred_train, cat_train)\n' .format(num,model), size=(100,55), font=(sg.DEFAULT_FONT, 14))]]
-                    code_window = sg.Window('Optimized Code', code_page, finalize=True)
+                    code_window = sg.Window('Code Optimized for Accuracy', code_page, finalize=True)
                     if event == sg.WIN_CLOSED:
                         code_window.close()
                 elif event2 == '-CODE2-':
@@ -709,7 +709,7 @@ else:\n\
     random_forest.fit(pred_train, cat_train)\n' .format(num_eff,model_eff), size=(100,55), font=(sg.DEFAULT_FONT, 14))]]
 
                         
-                    code_window = sg.Window('Optimized Code', code_page, finalize=True)
+                    code_window = sg.Window('Code Optimized for Efficiency', code_page, finalize=True)
                     if event == sg.WIN_CLOSED:
                         code_window.close()
                 elif event2 == '-CODE3-':
@@ -814,7 +814,7 @@ else:\n\
     random_forest.fit(pred_train, cat_train)\n' .format((num+num_eff)//2,model_eff), size=(100,55), font=(sg.DEFAULT_FONT, 14))]]
 
                         
-                    code_window = sg.Window('Optimized Code', code_page, finalize=True)
+                    code_window = sg.Window('Trade-Off Between Accuracy and Efficiency', code_page, finalize=True)
                     if event == sg.WIN_CLOSED:
                         code_window.close()
         if event == sg.WIN_CLOSED or event == "Exit":
